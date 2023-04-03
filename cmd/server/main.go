@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,16 +20,24 @@ import (
 // Basic unauthed web_paths and a webhook to create a new pull
 
 func main() {
+	devMode := flag.Bool("dev", false, "enable dev mode which reloads the templates at runtime to allow rapid iteration")
+	flag.Parse()
+
+	if *devMode {
+		log.Println("Developer mode enabled!")
+	}
+
 	db, err := db.NewSDDB(os.Getenv("DSN"))
 	if err != nil {
 		log.Fatal(err)
 	}
 	s := Server{
-		db: db,
+		devMode: *devMode,
+		db:      db,
 	}
 
 	r := mux.NewRouter()
-	r.HandleFunc("/", index)
+	r.HandleFunc("/", s.IndexHandler)
 	r.HandleFunc("/user/{id}", s.UserHandler)
 	r.HandleFunc("/knife/{id:[0-9]+}", s.KnifeHandler)
 
@@ -43,6 +52,7 @@ func main() {
 	}
 
 	go func() {
+		log.Println("starting webserver")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Println("Error running server: %s", err)
 		}

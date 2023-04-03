@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS knives (
   author_id INT,
   edition_id INT,
   rarity ENUM('Uncommon', 'Common', 'Rare', 'Ultra Rare', 'Super Rare'),
+  image_name VARCHAR(100),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -31,3 +32,4 @@ CREATE TABLE IF NOT EXISTS knife_ownership (
   instance_id INT AUTO_INCREMENT PRIMARY KEY,
   trans_type ENUM('pull', 'trade')
 );
+

@@ -14,6 +14,7 @@ type Knife struct {
 	Owner      string
 	OwnerID    int
 	Rarity     string
+	ImageName  string
 	Edition    string
 	ObtainedAt time.Time
 }
@@ -27,6 +28,7 @@ type User struct {
 
 type KnifeDB interface {
 	GetKnife(ctx context.Context, knifeID int) (*Knife, error)
-	GetKnivesForUser(ctx context.Context, userID int) ([]*Knife, error)
+	GetKnivesForUsername(ctx context.Context, username string) ([]*Knife, error)
+	GetUser(ctx context.Context, username string) (*User, error)
 	Close(context.Context) error
 }

@@ -40,7 +40,7 @@ func mustBool(s string) bool {
 func main() {
 	// Open bladechain.txt and parse each line into a pull
 
-	f, err := os.Open("bladechain.txt")
+	f, err := os.Open("reference/bladechain.txt")
 	if err != nil {
 		log.Fatalf("Unable to open file: %s", err)
 	}
