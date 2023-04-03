@@ -32,14 +32,16 @@ func main() {
 		log.Fatal(err)
 	}
 	s := Server{
-		devMode: *devMode,
-		db:      db,
+		devMode:       *devMode,
+		db:            db,
+		webhookSecret: os.Getenv("WEBHOOK_SECRET"),
 	}
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", s.IndexHandler)
 	r.HandleFunc("/user/{id}", s.UserHandler)
 	r.HandleFunc("/knife/{id:[0-9]+}", s.KnifeHandler)
+	r.HandleFunc("/pull/{token}", s.PullHandler).Methods(http.MethodPost)
 
 	http.Handle("/", r)
 
@@ -54,7 +56,7 @@ func main() {
 	go func() {
 		log.Println("starting webserver")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Println("Error running server: %s", err)
+			log.Printf("Error running server: %s", err)
 		}
 	}()
 
@@ -64,6 +66,6 @@ func main() {
 	defer cancel()
 	db.Close(ctx)
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Println("Error stopping http server: %v", err)
+		log.Printf("Error stopping http server: %v", err)
 	}
 }

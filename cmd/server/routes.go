@@ -2,6 +2,8 @@ package main
 
 import (
 	"embed"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -50,8 +52,9 @@ func servererr(w http.ResponseWriter, err error, errorCode int) {
 }
 
 type Server struct {
-	devMode bool
-	db      db.KnifeDB
+	devMode       bool
+	db            db.KnifeDB
+	webhookSecret string
 }
 
 func (s *Server) getTemplate(templateName string) (*template.Template, error) {
@@ -118,7 +121,7 @@ func (s *Server) UserHandler(w http.ResponseWriter, r *http.Request) {
 	err = t.Execute(w, payload)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Println("error executing template: %s", err)
+		log.Printf("error executing template: %s", err)
 	}
 }
 
@@ -153,6 +156,52 @@ func (s *Server) KnifeHandler(w http.ResponseWriter, r *http.Request) {
 	err = t.Execute(w, payload)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Println("error executing template: %s", err)
+		log.Printf("error executing template: %s", err)
+	}
+}
+
+type PullRequest struct {
+	Username  string `json:"username"`
+	Knifename string `json:"knifename"`
+}
+
+func (s *Server) PullHandler(w http.ResponseWriter, r *http.Request) {
+	if s.webhookSecret == "" {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	token := vars["token"]
+	if token != s.webhookSecret {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	var reqBody PullRequest
+	err := json.NewDecoder(r.Body).Decode(&reqBody)
+	if err != nil {
+		log.Printf("error parsing body %s", err)
+		servererr(w, err, http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	k, err := s.db.PullKnife(ctx, reqBody.Username, reqBody.Knifename)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "Unable to find either this knife or this user: %s", err)
+			return
+		}
+
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Internal Server Error: %s", err)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(k)
+	if err != nil {
+		log.Printf("error serializing knife: %s", err)
 	}
 }

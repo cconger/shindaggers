@@ -19,6 +19,12 @@ type Knife struct {
 	ObtainedAt time.Time
 }
 
+type KnifeType struct {
+	ID        int
+	Name      string
+	ImageName string
+}
+
 type User struct {
 	ID        int
 	Name      string
@@ -30,5 +36,10 @@ type KnifeDB interface {
 	GetKnife(ctx context.Context, knifeID int) (*Knife, error)
 	GetKnivesForUsername(ctx context.Context, username string) ([]*Knife, error)
 	GetUser(ctx context.Context, username string) (*User, error)
+
+	CreateUser(ctx context.Context, name string) (*User, error)
+	// GetKnifeByName(ctx context.Context, knifename string) (*KnifeType, error)
+	PullKnife(ctx context.Context, username string, knifename string) (*Knife, error)
+
 	Close(context.Context) error
 }

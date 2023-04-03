@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -216,4 +218,92 @@ func (sd *SDDB) GetUser(ctx context.Context, username string) (*User, error) {
 	}
 
 	return &user, nil
+}
+
+var createUserQuery = `INSERT INTO users (twitch_name, lookup_name) VALUES (?, ?);`
+
+func (sd *SDDB) CreateUser(ctx context.Context, username string) (*User, error) {
+	query, err := sd.db.Prepare(createUserQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	lookupName := strings.ToLower(username)
+
+	_, err = query.ExecContext(ctx, username, lookupName)
+	if err != nil {
+		return nil, err
+	}
+
+	return sd.GetUser(ctx, lookupName)
+}
+
+var (
+	getKnifeByName       = `SELECT id FROM knives WHERE name = ?;`
+	createKnifePullQuery = `INSERT INTO knife_ownership (user_id, knife_id, trans_type) VALUES (?, ?, ?);`
+)
+
+func (sd *SDDB) PullKnife(ctx context.Context, username string, knifename string) (*Knife, error) {
+	// TODO: Transactions
+
+	// Lookup knifeID by name
+	knifeq, err := sd.db.Prepare(getKnifeByName)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := knifeq.Query(knifename)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+
+	if !rows.Next() {
+		return nil, ErrNotFound
+	}
+
+	var knifeID int
+
+	err = rows.Scan(&knifeID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Lookup user by name (create if missing)
+	user, err := sd.GetUser(ctx, username)
+	if err != nil {
+		if err == ErrNotFound {
+			user, err = sd.CreateUser(ctx, username)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+
+	// Create the pull
+	createQ, err := sd.db.Prepare(createKnifePullQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := createQ.Exec(user.ID, knifeID, "pull")
+	if err != nil {
+		return nil, err
+	}
+
+	log.Printf(
+		"Created pull for %d of knife %d based on inputs %s and %s",
+		user.ID,
+		knifeID,
+		username,
+		knifename,
+	)
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	return sd.GetKnife(ctx, int(id))
 }
