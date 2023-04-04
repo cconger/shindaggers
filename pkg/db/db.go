@@ -33,6 +33,7 @@ type User struct {
 }
 
 type KnifeDB interface {
+	GetLatestPulls(ctx context.Context) ([]*Knife, error)
 	GetKnife(ctx context.Context, knifeID int) (*Knife, error)
 	GetKnivesForUsername(ctx context.Context, username string) ([]*Knife, error)
 	GetUser(ctx context.Context, username string) (*User, error)

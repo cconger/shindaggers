@@ -11,13 +11,12 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cconger/shindaggers/pkg/db"
 
 	"github.com/gorilla/mux"
 )
-
-type FrontPage struct{}
 
 type KnifePage struct {
 	db.Knife
@@ -64,15 +63,45 @@ func (s *Server) getTemplate(templateName string) (*template.Template, error) {
 	return template.ParseFS(templates, path.Join("templates", templateName))
 }
 
+type PullListing struct {
+	InstanceID  int
+	Name        string
+	Owner       string
+	AbsTime     string
+	TimeAgo     string
+	ImageName   string
+	RarityClass string
+}
+
 func (s *Server) IndexHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	t, err := s.getTemplate("index.html")
 	if err != nil {
 		servererr(w, err, http.StatusInternalServerError)
 		return
 	}
 
+	knivesRes, err := s.db.GetLatestPulls(ctx)
+	if err != nil {
+		log.Printf("error getting latest pulls: %s", err)
+	}
+
+	pulls := make([]*PullListing, len(knivesRes))
+	for i, k := range knivesRes {
+		pulls[i] = &PullListing{
+			InstanceID:  k.InstanceID,
+			Name:        k.Name,
+			Owner:       k.Owner,
+			ImageName:   k.ImageName,
+			RarityClass: className(k.Rarity),
+			AbsTime:     k.ObtainedAt.String(),
+			TimeAgo:     timeAgo(k.ObtainedAt),
+		}
+	}
+
 	w.WriteHeader(http.StatusOK)
-	t.Execute(w, nil)
+	t.Execute(w, pulls)
 }
 
 type UserPagePayload struct {
@@ -204,4 +233,19 @@ func (s *Server) PullHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("error serializing knife: %s", err)
 	}
+}
+
+func timeAgo(t time.Time) string {
+	delta := time.Since(t)
+
+	if delta < time.Minute {
+		return "just now"
+	}
+	if delta < time.Hour {
+		return fmt.Sprintf("%d minutes ago", int(delta.Minutes()))
+	}
+	if delta < 24*time.Hour {
+		return fmt.Sprintf("%d hours ago", int(delta.Hours()))
+	}
+	return fmt.Sprintf("%d days ago", int(delta.Hours())/24)
 }

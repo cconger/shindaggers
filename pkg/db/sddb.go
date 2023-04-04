@@ -42,6 +42,73 @@ func (sd *SDDB) Close(ctx context.Context) error {
 	return sd.db.Close()
 }
 
+var getLatestPullsQuery = `
+SELECT
+  knives.id,
+  knife_ownership.instance_id,
+  knives.name,
+  author.twitch_name,
+  author.id,
+  owner.twitch_name,
+  owner.id,
+  knives.rarity,
+  knives.image_name,
+  editions.name,
+  knife_ownership.transacted_at
+FROM knife_ownership
+JOIN knives ON knife_ownership.knife_id = knives.id
+LEFT JOIN users owner ON knife_ownership.user_id = owner.id
+LEFT JOIN users author ON knives.author_id = author.id
+JOIN editions ON knives.edition_id = editions.id
+ORDER BY knife_ownership.transacted_at DESC
+LIMIT 10;
+`
+
+func (sd *SDDB) GetLatestPulls(ctx context.Context) ([]*Knife, error) {
+	query, err := sd.db.Prepare(getLatestPullsQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := query.QueryContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	knives := []*Knife{}
+	for rows.Next() {
+		var obtainedAt string
+
+		var knife Knife
+		err = rows.Scan(
+			&knife.ID,
+			&knife.InstanceID,
+			&knife.Name,
+			&knife.Author,
+			&knife.AuthorID,
+			&knife.Owner,
+			&knife.OwnerID,
+			&knife.Rarity,
+			&knife.ImageName,
+			&knife.Edition,
+			&obtainedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		knife.ObtainedAt, err = parseTimestamp(obtainedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		knives = append(knives, &knife)
+	}
+
+	return knives, nil
+}
+
 var getKnifeQuery = `
 SELECT
   knives.id,

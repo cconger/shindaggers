@@ -3,12 +3,150 @@
   <head>
     <title>Shindaggers</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200;700&display=swap" rel="stylesheet">
+<style>
+
+
+html {
+  min-height: 100%;
+}
+
+
+body {
+  font-family: Oswald, sans-serif;
+  display: grid;
+  grid-template-rows: 100%;
+  grid-template-columns: 1fr 400px;
+  margin: 0;
+}
+
+section.intro {
+  padding: 1em;
+  background: rgb(240, 240, 255);
+}
+
+section.intro h1 {
+  font-size: 74px;
+}
+
+section.intro p {
+  font-size: 24px;
+}
+
+section.pulls {
+  height: 100%;
+  padding: 1em;
+  background: rgb(20,20,40);
+  color: white;
+}
+
+.pulls-list {
+  display: grid;
+}
+
+.pull {
+  display: grid;
+  grid-template-columns: 50px 1fr 3fr;
+  grid-gap: 10px;
+  font-size: 1.2em;
+  margin: 20px 0;
+  align-items: center;
+}
+
+.pulls-list a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.pull .image img {
+  width: 100%;
+  height: 100%;
+}
+
+.pull .info {
+  font-size: 18px;
+}
+
+.pull .time {
+  font-size: 14px;
+}
+
+.rarity-common {
+  background: radial-gradient(at 0% 50%, rgba(255,255,255,0.5) 0%, rgba(0,0,0,0) 66%);
+}
+
+.rarity-common:hover {
+  background: radial-gradient(at 20% 50%, rgba(255,255,255,0.5) 0%, rgba(0,0,0,0) 66%);
+}
+
+.rarity-uncommon {
+  background: radial-gradient(at 0% 50%, rgba(30,255,0, 0.5) 0%, rgba(0,0,0,0) 66%);
+}
+
+.rarity-uncommon:hover {
+  background: radial-gradient(at 20% 50%, rgba(30,255,0, 0.5) 0%, rgba(0,0,0,0) 66%);
+}
+
+.rarity-rare {
+  background: radial-gradient(at 0% 50%, rgba(0,112,221, 0.5) 0%, rgba(0,0,0,0) 66%);
+}
+
+.rarity-rare:hover {
+  background: radial-gradient(at 20% 50%, rgba(0,112,221, 0.5) 0%, rgba(0,0,0,0) 66%);
+}
+
+.rarity-super-rare {
+  background: radial-gradient(at 0% 50%, rgba(163,53,238, 0.5) 0%, rgba(0,0,0,0) 66%);
+}
+
+.rarity-super-rare:hover {
+  background: radial-gradient(at 20% 50%, rgba(163,53,238, 0.5) 0%, rgba(0,0,0,0) 66%);
+}
+
+.rarity-ultra-rare {
+  background: radial-gradient(at 0% 50%, rgba(255,128,0, 0.5) 0%, rgba(0,0,0,0) 66%);
+}
+
+.rarity-ultra-rare:hover {
+  background: radial-gradient(at 20% 50%, rgba(255,128,0, 0.5) 0%, rgba(0,0,0,0) 66%);
+}
+
+@media screen and (max-width: 800px) {
+  body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+}
+
+</style>
   </head>
   <body>
-    <h1>Shindaggers inventory</h1>
-    <p>Finally a inventory for your hard earned Shindigs Brand Knives.  Have you been looking for a place to
-    show off your first edition Kirkland Signature blade?  Want to keep tabs of your 90th copy of the
-    Enchanted Dagger, well here it is.  Using the peak of modern technology.  Databases.  Yes that's right,
-    firmly on the bleeding edge of Web 2.0 technology you can be assured the non fungibility of your steel.<p>
+    <section class="intro">
+      <h1>Shindaggers</h1>
+      <p>
+        Finally a place for you to gaze upon your collection of hard earned <a href="https://twitch.tv/shindigs">Shindigs</a> Brand Knives.
+      </p>
+    </section>
+    <section class="pulls">
+      <h2>Latest Pulls</h2>
+      <div class="pulls-list">
+        {{range .}}
+        <a href="/knife/{{.InstanceID}}">
+          <div class="pull {{.RarityClass}}">
+            <div class="image">
+              <img src="https://images.shindaggers.io/images/{{.ImageName}}"/>
+            </div>
+            <div>{{.Name}}</div>
+            <div class="info">
+              <div>Pulled by {{.Owner}}</div>
+              <div class="time" title="{{.AbsTime}}">{{.TimeAgo}}</div>
+            </div>
+          </div>
+        </a>
+        {{end}}
+      </div>
+    </section>
   </body>
 </html>
