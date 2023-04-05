@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -246,6 +247,7 @@ var getUserQuery = `
 SELECT
   id,
   twitch_name,
+  lookup_name,
   created_at
 FROM users
 WHERE lookup_name = ?;
@@ -273,6 +275,7 @@ func (sd *SDDB) GetUser(ctx context.Context, username string) (*User, error) {
 	err = rows.Scan(
 		&user.ID,
 		&user.Name,
+		&user.LookupName,
 		&createdAt,
 	)
 	if err != nil {
@@ -287,17 +290,27 @@ func (sd *SDDB) GetUser(ctx context.Context, username string) (*User, error) {
 	return &user, nil
 }
 
-var createUserQuery = `INSERT INTO users (twitch_name, lookup_name) VALUES (?, ?);`
+var createUserQuery = `INSERT INTO users (twitch_name, lookup_name, twitch_id) VALUES (?, ?, ?);`
 
-func (sd *SDDB) CreateUser(ctx context.Context, username string) (*User, error) {
+func (sd *SDDB) CreateUser(ctx context.Context, user *User) (*User, error) {
+	if user == nil {
+		return nil, fmt.Errorf("user cannot be nil")
+	}
 	query, err := sd.db.Prepare(createUserQuery)
 	if err != nil {
 		return nil, err
 	}
 
-	lookupName := strings.ToLower(username)
+	if user.Name == "" {
+		return nil, fmt.Errorf("username must be specified")
+	}
 
-	_, err = query.ExecContext(ctx, username, lookupName)
+	lookupName := user.LookupName
+	if lookupName == "" {
+		lookupName = strings.ToLower(user.Name)
+	}
+
+	_, err = query.ExecContext(ctx, user.Name, lookupName, user.TwitchID)
 	if err != nil {
 		return nil, err
 	}
@@ -339,7 +352,9 @@ func (sd *SDDB) PullKnife(ctx context.Context, username string, knifename string
 	user, err := sd.GetUser(ctx, username)
 	if err != nil {
 		if err == ErrNotFound {
-			user, err = sd.CreateUser(ctx, username)
+			user, err = sd.CreateUser(ctx, &User{
+				Name: username,
+			})
 			if err != nil {
 				return nil, err
 			}
@@ -349,12 +364,12 @@ func (sd *SDDB) PullKnife(ctx context.Context, username string, knifename string
 	}
 
 	// Create the pull
-	createQ, err := sd.db.Prepare(createKnifePullQuery)
+	createQ, err := sd.db.PrepareContext(ctx, createKnifePullQuery)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := createQ.Exec(user.ID, knifeID, "pull")
+	res, err := createQ.ExecContext(ctx, user.ID, knifeID, "pull")
 	if err != nil {
 		return nil, err
 	}
@@ -373,4 +388,86 @@ func (sd *SDDB) PullKnife(ctx context.Context, username string, knifename string
 	}
 
 	return sd.GetKnife(ctx, int(id))
+}
+
+var queryUserAuthByToken = `
+SELECT
+  user_id,
+  token,
+  access_token,
+  refresh_token,
+  expires_at,
+  updated_at
+FROM user_auth
+WHERE token = ?;
+`
+
+func (sd *SDDB) GetAuth(ctx context.Context, token []byte) (*UserAuth, error) {
+	getTokenQ, err := sd.db.PrepareContext(ctx, queryUserAuthByToken)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := getTokenQ.QueryContext(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+
+	if !rows.Next() {
+		return nil, ErrNotFound
+	}
+
+	var expiresAtStr string
+	var updatedAtStr string
+	var userAuth UserAuth
+	err = rows.Scan(
+		&userAuth.UserID,
+		&userAuth.Token,
+		&userAuth.AccessToken,
+		&userAuth.RefreshToken,
+		&expiresAtStr,
+		&updatedAtStr,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	userAuth.ExpiresAt, err = parseTimestamp(expiresAtStr)
+	if err != nil {
+		return nil, err
+	}
+	userAuth.UpdatedAt, err = parseTimestamp(updatedAtStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userAuth, nil
+}
+
+var saveAuthQuery = `
+INSERT INTO user_auth (user_id, token, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE token = VALUES(token), access_token = VALUES(access_token), refresh_token = VALUES(refresh_token), expires_at = VALUES(expires_at);
+`
+
+func (sd *SDDB) SaveAuth(ctx context.Context, auth *UserAuth) (*UserAuth, error) {
+	// TODO: Validate required fields on auth
+
+	query, err := sd.db.PrepareContext(ctx, saveAuthQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = query.ExecContext(
+		ctx,
+		auth.UserID,
+		auth.Token,
+		auth.AccessToken,
+		auth.RefreshToken,
+		auth.ExpiresAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: this should actually be the query... but w/e
+	return auth, nil
 }

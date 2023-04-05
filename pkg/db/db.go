@@ -26,10 +26,20 @@ type KnifeType struct {
 }
 
 type User struct {
-	ID        int
-	Name      string
-	TwitchID  string
-	CreatedAt time.Time
+	ID         int
+	Name       string
+	LookupName string
+	TwitchID   string
+	CreatedAt  time.Time
+}
+
+type UserAuth struct {
+	UserID       int
+	Token        []byte
+	AccessToken  string
+	RefreshToken string
+	ExpiresAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type KnifeDB interface {
@@ -38,9 +48,14 @@ type KnifeDB interface {
 	GetKnivesForUsername(ctx context.Context, username string) ([]*Knife, error)
 	GetUser(ctx context.Context, username string) (*User, error)
 
-	CreateUser(ctx context.Context, name string) (*User, error)
+	CreateUser(ctx context.Context, user *User) (*User, error)
+
 	// GetKnifeByName(ctx context.Context, knifename string) (*KnifeType, error)
 	PullKnife(ctx context.Context, username string, knifename string) (*Knife, error)
+
+	// Twitch Auth
+	GetAuth(ctx context.Context, token []byte) (*UserAuth, error)
+	SaveAuth(ctx context.Context, auth *UserAuth) (*UserAuth, error)
 
 	Close(context.Context) error
 }

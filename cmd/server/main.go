@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/cconger/shindaggers/pkg/db"
+	"github.com/cconger/shindaggers/pkg/twitch"
 
 	"github.com/gorilla/mux"
 )
@@ -27,14 +28,29 @@ func main() {
 		log.Println("Developer mode enabled!")
 	}
 
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	clientSecret := os.Getenv("TWITCH_SECRET")
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:8080"
+	}
+
+	tw, err := twitch.NewClient(clientID, clientSecret)
+	if err != nil {
+		log.Fatalf("failed to create twitchclient: %s", err)
+	}
+
 	db, err := db.NewSDDB(os.Getenv("DSN"))
 	if err != nil {
 		log.Fatal(err)
 	}
 	s := Server{
-		devMode:       *devMode,
-		db:            db,
-		webhookSecret: os.Getenv("WEBHOOK_SECRET"),
+		devMode:        *devMode,
+		db:             db,
+		webhookSecret:  os.Getenv("WEBHOOK_SECRET"),
+		twitchClientID: clientID,
+		twitchClient:   tw,
+		baseURL:        baseURL,
 	}
 
 	r := mux.NewRouter()
@@ -42,6 +58,7 @@ func main() {
 	r.HandleFunc("/user/{id}", s.UserHandler)
 	r.HandleFunc("/knife/{id:[0-9]+}", s.KnifeHandler)
 	r.HandleFunc("/pull/{token}", s.PullHandler).Methods(http.MethodPost)
+	r.HandleFunc("/oauth/redirect", s.OAuthHandler)
 
 	http.Handle("/", r)
 

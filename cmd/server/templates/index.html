@@ -128,11 +128,13 @@ section.pulls {
       <p>
         Finally a place for you to gaze upon your collection of hard earned <a href="https://twitch.tv/shindigs">Shindigs</a> Brand Knives.
       </p>
+
+      <a href="{{.LoginURL}}">Login With Twitch</a>
     </section>
     <section class="pulls">
       <h2>Latest Pulls</h2>
       <div class="pulls-list">
-        {{range .}}
+        {{range .Pulls}}
         <a href="/knife/{{.InstanceID}}">
           <div class="pull {{.RarityClass}}">
             <div class="image">

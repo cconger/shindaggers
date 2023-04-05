@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
 	"embed"
 	"encoding/json"
 	"errors"
@@ -8,12 +10,14 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"path"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/cconger/shindaggers/pkg/db"
+	"github.com/cconger/shindaggers/pkg/twitch"
 
 	"github.com/gorilla/mux"
 )
@@ -42,6 +46,17 @@ func className(rarity string) string {
 	return "rarity-common"
 }
 
+func createAuthToken() ([]byte, error) {
+	// Secure random => sha256
+	entropy := make([]byte, 100)
+	_, err := rand.Read(entropy)
+	if err != nil {
+		return nil, err
+	}
+	token := sha256.Sum256(entropy)
+	return token[:], nil
+}
+
 //go:embed templates/*
 var templates embed.FS
 
@@ -51,9 +66,12 @@ func servererr(w http.ResponseWriter, err error, errorCode int) {
 }
 
 type Server struct {
-	devMode       bool
-	db            db.KnifeDB
-	webhookSecret string
+	devMode        bool
+	db             db.KnifeDB
+	webhookSecret  string
+	twitchClientID string
+	twitchClient   *twitch.Client
+	baseURL        string
 }
 
 func (s *Server) getTemplate(templateName string) (*template.Template, error) {
@@ -71,6 +89,22 @@ type PullListing struct {
 	TimeAgo     string
 	ImageName   string
 	RarityClass string
+}
+
+type IndexPayload struct {
+	LoginURL string
+	Pulls    []*PullListing
+}
+
+func (s *Server) loginWithTwitchURL() string {
+	p := url.Values{
+		"response_type": []string{"code"},
+		"client_id":     []string{s.twitchClientID},
+		"redirect_uri":  []string{fmt.Sprintf("%s/oauth/redirect", s.baseURL)},
+		"scope":         []string{""},
+	}
+
+	return "https://id.twitch.tv/oauth2/authorize?" + p.Encode()
 }
 
 func (s *Server) IndexHandler(w http.ResponseWriter, r *http.Request) {
@@ -100,8 +134,108 @@ func (s *Server) IndexHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	pl := IndexPayload{
+		LoginURL: s.loginWithTwitchURL(),
+		Pulls:    pulls,
+	}
+
 	w.WriteHeader(http.StatusOK)
-	t.Execute(w, pulls)
+	t.Execute(w, pl)
+}
+
+func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	params := r.URL.Query()
+	errored := params.Has("error")
+	if errored {
+		desc := params.Get("error_description")
+		log.Printf("OAUTH Error: %s", desc)
+		http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+		return
+	}
+
+	// Use code to get access token
+	code := params.Get("code")
+	if code == "" {
+		log.Printf("code is empty")
+		http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+		return
+	}
+
+	t, err := s.twitchClient.OAuthGetToken(
+		ctx,
+		code,
+		fmt.Sprintf("%s/oauth/redirect", s.baseURL),
+	)
+	if err != nil {
+		log.Printf("error getting oauthtoken: %s", err)
+		http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+		return
+	}
+
+	expiresAt := time.Now().Add(time.Duration(t.ExpiresIn) * time.Second)
+
+	// Get user from twitch
+	twitchUser, err := s.twitchClient.GetUser(ctx, t.AccessToken)
+	if err != nil {
+		log.Printf("error getting twitch user %s", err)
+		http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+		return
+	}
+
+	// Get or create user in our db
+	user, err := s.db.GetUser(ctx, twitchUser.Login)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			user, err = s.db.CreateUser(ctx, &db.User{
+				Name:       twitchUser.DisplayName,
+				LookupName: twitchUser.Login,
+				TwitchID:   twitchUser.ID,
+			})
+			if err != nil {
+				log.Printf("error creating user %s", err)
+				http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+				return
+			}
+		} else {
+			log.Printf("error getting user %s", err)
+			http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+			return
+		}
+	}
+
+	token, err := createAuthToken()
+	if err != nil {
+		log.Printf("error creating auth token: %s", err)
+		http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+		return
+	}
+
+	// Store access token and refresh token
+	_, err = s.db.SaveAuth(
+		ctx,
+		&db.UserAuth{
+			UserID:       user.ID,
+			Token:        token,
+			AccessToken:  t.AccessToken,
+			RefreshToken: t.RefreshToken,
+			ExpiresAt:    expiresAt,
+		},
+	)
+	if err != nil {
+		log.Printf("error saving auth token: %s", err)
+		http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+		return
+	}
+
+	// Redirect to user page
+	http.Redirect(
+		w,
+		r,
+		fmt.Sprintf("%s/user/%s", s.baseURL, user.LookupName),
+		http.StatusTemporaryRedirect,
+	)
 }
 
 type UserPagePayload struct {
