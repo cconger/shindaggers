@@ -8,6 +8,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200;700&display=swap" rel="stylesheet">
 
     <style>
+html {
+  min-height: 100%;
+}
+
 body {
   background: radial-gradient(at 50% 10%, #060606 0%, #2c5267 100%);
   font-family: Oswald, sans-serif;
@@ -33,6 +37,7 @@ body {
   text-align: center;
   box-shadow: 5px 5px 15px rgba(0,0,0,0.9);
   font-size: 30px;
+  border-solid solid 5px rgb(20, 20, 40);
 }
 
 .user {
@@ -47,6 +52,10 @@ body {
 .inventory a {
   text-decoration: none;
   color: black;
+}
+
+.inventory-knife .name {
+  border-top: solid 1px rgb(20,20,40);
 }
 
 .inventory .inventory-knife img {

@@ -103,19 +103,21 @@ func main() {
 	knivesByName := make(map[string]int)
 	usersByName := make(map[string]int)
 
-	insertPullQuery, err := db.Prepare("INSERT INTO knife_ownership (user_id, knife_id, trans_type) VALUES (?, ?,?);")
+	insertPullQuery, err := db.Prepare("INSERT INTO knife_ownership (user_id, knife_id, trans_type, transacted_at) VALUES (?, ?, ?, ?);")
 	if err != nil {
 		log.Fatalf("unable to prepare knife creation query: %s", err)
 	}
 
 	// TODO: query for the max timestamp and only ingest ones after that time
 
-	for _, p := range pulls {
+	for i, p := range pulls {
 		creator, ok := usersByName[p.creator]
 		if !ok {
 			id, err := getOrCreateUserIDByName(db, p.creator, p.time)
 			if err != nil {
-				log.Fatalf("could not create creator: %s", err)
+				log.Printf("could not create creator: %s", err)
+				log.Printf("pull: %d pull: %+v", i, p)
+				continue
 			}
 			usersByName[p.creator] = id
 			creator = id
@@ -125,7 +127,9 @@ func main() {
 		if !ok {
 			id, err := getOrCreateUserIDByName(db, p.username, p.time)
 			if err != nil {
-				log.Fatalf("could not resolve knife by name: %s", err)
+				log.Printf("could not resolve user by name: %s", err)
+				log.Printf("pull: %d pull: %+v", i, p)
+				continue
 			}
 			usersByName[p.username] = id
 			user = id
@@ -135,13 +139,15 @@ func main() {
 		if !ok {
 			id, err := getOrCreateKnifeIDByName(db, p.knife, p.rarity, creator, p.time)
 			if err != nil {
-				log.Fatalf("could not resolve knife by name: %s", err)
+				log.Printf("could not resolve knife by name: %s", err)
+				log.Printf("pull: %d pull: %+v", i, p)
+				continue
 			}
 			knivesByName[p.knife] = id
 			knife = id
 		}
 
-		res, err := insertPullQuery.Exec(user, knife, "pull")
+		res, err := insertPullQuery.Exec(user, knife, "pull", p.time)
 		if err != nil {
 			log.Fatalf("unable to create pull: %s", err)
 		}
@@ -167,6 +173,8 @@ func getOrCreateKnifeIDByName(db *sql.DB, name string, rarity string, author_id 
 
 	if !rows.Next() {
 		// Insert knife
+		return 0, fmt.Errorf("Create knife disabled")
+
 		createKnifeQuery, err := db.Prepare("INSERT INTO knives (name, author_id, rarity, edition_id, created_at) VALUES(?, ?, ?, ?, ?)")
 		if err != nil {
 			return 0, fmt.Errorf("unable to prepare insert query: %w", err)
@@ -202,7 +210,9 @@ func getOrCreateUserIDByName(db *sql.DB, name string, created_at time.Time) (int
 	defer rows.Close()
 
 	if !rows.Next() {
-		// Insert knife
+		return 0, fmt.Errorf("Create user is disabled")
+
+		// Insert User
 		createUserQuery, err := db.Prepare("INSERT INTO users (twitch_name, created_at) VALUES(?, ?)")
 		if err != nil {
 			return 0, fmt.Errorf("unable to prepare insert query: %w", err)
