@@ -324,6 +324,7 @@ func (s *Server) KnifeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PullRequest struct {
+	TwitchID  string `json:"twitch_id"`
 	Username  string `json:"username"`
 	Knifename string `json:"knifename"`
 }
@@ -350,6 +351,7 @@ func (s *Server) PullHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
+	// TODO: lookup user by id or username here instead of in db
 	k, err := s.db.PullKnife(ctx, reqBody.Username, reqBody.Knifename)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {

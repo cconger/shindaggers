@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 )
 
@@ -32,6 +34,11 @@ func NewClient(clientID string, clientSecret string) (*Client, error) {
 	}, nil
 }
 
+// debugBody can wrap a resp.Body reader for debugging a payload before it enters a JSON decoder
+func debugBody(r io.Reader) io.Reader {
+	return io.TeeReader(r, os.Stdout)
+}
+
 func (c *Client) authHeaders(r *http.Request, token string) *http.Request {
 	r.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 	r.Header.Add("Client-Id", c.ClientID)
@@ -44,6 +51,32 @@ type GetTokenResponse struct {
 	RefreshToken string   `json:"refresh_token"`
 	Scope        []string `json:"scope"`
 	TokenType    string   `json:"token_type"`
+}
+
+func (c *Client) GetAppToken(ctx context.Context) (*GetTokenResponse, error) {
+	params := url.Values{}
+	params.Add("client_id", c.ClientID)
+	params.Add("client_secret", c.ClientSecret)
+	params.Add("grant_type", "client_credentials")
+
+	req, err := http.NewRequest(http.MethodPost, "https://id.twitch.tv/oauth2/token", strings.NewReader(params.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("creating oauth request: %w", err)
+	}
+
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("post oauth request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var tokenResp GetTokenResponse
+	err = json.NewDecoder(resp.Body).Decode(&tokenResp)
+	if err != nil {
+		return nil, fmt.Errorf("deserializing oauth: %w", err)
+	}
+
+	return &tokenResp, nil
 }
 
 func (c *Client) OAuthGetToken(ctx context.Context, code string, redirectURI string) (*GetTokenResponse, error) {
@@ -84,11 +117,26 @@ type TwitchUser struct {
 }
 
 type TwitchUserPayload struct {
-	Data []TwitchUser `json:"data"`
+	Data []*TwitchUser `json:"data"`
 }
 
 func (c *Client) GetUser(ctx context.Context, token string) (*TwitchUser, error) {
-	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.twitch.tv/helix/users", nil)
+	users, err := c.GetUsersByLogin(ctx, token)
+	return users[0], err
+}
+
+func (c *Client) GetUsersByLogin(ctx context.Context, token string, login ...string) ([]*TwitchUser, error) {
+	u, err := url.Parse("https://api.twitch.tv/helix/users")
+	if err != nil {
+		return nil, err
+	}
+
+	params := url.Values{
+		"login": login,
+	}
+	u.RawQuery = params.Encode()
+
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -109,5 +157,5 @@ func (c *Client) GetUser(ctx context.Context, token string) (*TwitchUser, error)
 		return nil, fmt.Errorf("no results")
 	}
 
-	return &payload.Data[0], nil
+	return payload.Data, nil
 }

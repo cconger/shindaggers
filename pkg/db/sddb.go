@@ -61,8 +61,9 @@ JOIN knives ON knife_ownership.knife_id = knives.id
 LEFT JOIN users owner ON knife_ownership.user_id = owner.id
 LEFT JOIN users author ON knives.author_id = author.id
 JOIN editions ON knives.edition_id = editions.id
+WHERE owner.id != 166
 ORDER BY knife_ownership.transacted_at DESC
-LIMIT 10;
+LIMIT 15;
 `
 
 func (sd *SDDB) GetLatestPulls(ctx context.Context) ([]*Knife, error) {

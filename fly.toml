@@ -7,6 +7,9 @@ mounts = []
 primary_region = "sjc"
 processes = []
 
+[env]
+  BASE_URL = "https://shindaggers.io"
+
 [[services]]
   internal_port = 8080
   processes = ["app"]
