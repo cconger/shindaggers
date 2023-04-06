@@ -120,6 +120,14 @@ section.pulls {
   }
 }
 
+.intro > div {
+  margin: 1em 0;
+}
+
+.intro h3 {
+  margin-bottom: 0;
+}
+
 </style>
   </head>
   <body>
@@ -130,12 +138,19 @@ section.pulls {
       </p>
 
       <div>
-        <a href="{{.LoginURL}}">Login With Twitch</a>
+        Browse the <a href="/catalog">full collection</a>
       </div>
+
       <div>
-        Or <label>Lookup Your Username:<input id="user-lookup" placeholder="shindigs"></label>
-        <button id="user-lookup-button">Lookup</button>
+        <h3>See your collection:</h3>
+        <div>
+          <label>Lookup Your Username: <input id="user-lookup" placeholder="shindigs"></label>
+          <button id="user-lookup-button">Lookup</button>
+        </div>
+        <div>Or</div>
+        <div><a href="{{.LoginURL}}">Login With Twitch</a></div>
       </div>
+
     </section>
     <section class="pulls">
       <h2>Latest Pulls</h2>
