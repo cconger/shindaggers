@@ -371,6 +371,75 @@ func (s *Server) PullHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Display the page that shows all the knives earnable
+func (s *Server) CatalogHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	knives, err := s.db.GetCollection(ctx)
+	if err != nil {
+		servererr(w, err, http.StatusInternalServerError)
+		return
+	}
+	var payload struct {
+		Knives []struct {
+			*db.KnifeType
+			RarityClass string
+		}
+	}
+
+	for _, k := range knives {
+		payload.Knives = append(payload.Knives, struct {
+			*db.KnifeType
+			RarityClass string
+		}{
+			k,
+			className(k.Rarity),
+		})
+	}
+
+	t, err := s.getTemplate("catalog.html")
+	if err != nil {
+		servererr(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	t.Execute(w, payload)
+}
+
+// Display the page that shows all the knives earnable
+func (s *Server) CatalogView(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		servererr(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	knife, err := s.db.GetKnifeType(ctx, id)
+	if err != nil {
+		servererr(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	payload := struct {
+		*db.KnifeType
+		RarityClass string
+	}{
+		knife,
+		className(knife.Rarity),
+	}
+
+	t, err := s.getTemplate("catalog-knife.html")
+	if err != nil {
+		servererr(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	t.Execute(w, payload)
+}
+
 func timeAgo(t time.Time) string {
 	delta := time.Since(t)
 

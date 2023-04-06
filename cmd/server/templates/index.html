@@ -129,7 +129,13 @@ section.pulls {
         Finally a place for you to gaze upon your collection of hard earned <a href="https://twitch.tv/shindigs">Shindigs</a> Brand Knives.
       </p>
 
-      <a href="{{.LoginURL}}">Login With Twitch</a>
+      <div>
+        <a href="{{.LoginURL}}">Login With Twitch</a>
+      </div>
+      <div>
+        Or <label>Lookup Your Username:<input id="user-lookup" placeholder="shindigs"></label>
+        <button id="user-lookup-button">Lookup</button>
+      </div>
     </section>
     <section class="pulls">
       <h2>Latest Pulls</h2>
@@ -150,5 +156,19 @@ section.pulls {
         {{end}}
       </div>
     </section>
+    <script type="application/javascript">
+      let lookupInput = document.getElementById("user-lookup");
+      lookupInput.addEventListener("keypress", function(event) {
+        if(event.key === 'Enter') {
+          let username = event.target.value;
+          window.location.href = "/user/" + username;
+        }
+      });
+
+      document.getElementById('user-lookup-button').addEventListener("click", function(event) {
+        let username = lookupInput.value;
+        window.location.href = "/user/" + username;
+      });
+    </script>
   </body>
 </html>

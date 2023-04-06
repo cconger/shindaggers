@@ -22,7 +22,11 @@ type Knife struct {
 type KnifeType struct {
 	ID        int
 	Name      string
+	Author    string
+	AuthorID  int
+	Rarity    string
 	ImageName string
+	Edition   string
 }
 
 type User struct {
@@ -50,8 +54,10 @@ type KnifeDB interface {
 
 	CreateUser(ctx context.Context, user *User) (*User, error)
 
-	// GetKnifeByName(ctx context.Context, knifename string) (*KnifeType, error)
 	PullKnife(ctx context.Context, username string, knifename string) (*Knife, error)
+
+	GetCollection(ctx context.Context) ([]*KnifeType, error)
+	GetKnifeType(ctx context.Context, id int) (*KnifeType, error)
 
 	// Twitch Auth
 	GetAuth(ctx context.Context, token []byte) (*UserAuth, error)

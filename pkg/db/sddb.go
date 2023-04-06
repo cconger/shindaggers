@@ -472,3 +472,103 @@ func (sd *SDDB) SaveAuth(ctx context.Context, auth *UserAuth) (*UserAuth, error)
 	// TODO: this should actually be the query... but w/e
 	return auth, nil
 }
+
+var getCatalogQuery = `
+SELECT
+  knives.id,
+  knives.name,
+  author.twitch_name,
+  author.id,
+  knives.rarity,
+  knives.image_name,
+  editions.name
+FROM knives
+LEFT JOIN users author ON knives.author_id = author.id
+JOIN editions ON knives.edition_id = editions.id
+ORDER BY knives.edition_id, knives.id ASC;
+`
+
+func (sd *SDDB) GetCollection(ctx context.Context) ([]*KnifeType, error) {
+	q, err := sd.db.PrepareContext(ctx, getCatalogQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := q.QueryContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	knives := []*KnifeType{}
+	for rows.Next() {
+		var k KnifeType
+
+		err = rows.Scan(
+			&k.ID,
+			&k.Name,
+			&k.Author,
+			&k.AuthorID,
+			&k.Rarity,
+			&k.ImageName,
+			&k.Edition,
+		)
+		if err != nil {
+			log.Printf("Error: scan GetCollection: %s", err)
+			continue
+		}
+
+		knives = append(knives, &k)
+	}
+
+	return knives, nil
+}
+
+var getKnifeTypeQuery = `
+SELECT
+  knives.id,
+  knives.name,
+  author.twitch_name,
+  author.id,
+  knives.rarity,
+  knives.image_name,
+  editions.name
+FROM knives
+LEFT JOIN users author ON knives.author_id = author.id
+JOIN editions ON knives.edition_id = editions.id
+WHERE knives.id = ?
+LIMIT 1;
+`
+
+func (sd *SDDB) GetKnifeType(ctx context.Context, id int) (*KnifeType, error) {
+	q, err := sd.db.PrepareContext(ctx, getKnifeTypeQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := q.QueryContext(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if !rows.Next() {
+		return nil, ErrNotFound
+	}
+
+	var k KnifeType
+
+	err = rows.Scan(
+		&k.ID,
+		&k.Name,
+		&k.Author,
+		&k.AuthorID,
+		&k.Rarity,
+		&k.ImageName,
+		&k.Edition,
+	)
+	if err != nil {
+		log.Printf("Error: scan GetCollection: %s", err)
+		return nil, err
+	}
+
+	return &k, nil
+}

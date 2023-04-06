@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Shindaggers - {{.Owner}}'s {{.Name}}</title>
+    <title>Shindaggers - {{.Name}}</title>
     <meta name="viewport" content="width=800px">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -63,7 +63,7 @@ body {
 
 .card-attribution {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr;
 }
 
@@ -103,11 +103,14 @@ a {
   color: black;
 }
 
+.label {
+  font-size: 16px;
+}
+
 
     </style>
   </head>
   <body>
-
     <div class="card {{.RarityClass}}" data-tilt> 
       <div class="card-image">
         <img src="https://images.shindaggers.io/images/{{.ImageName}}"/>
@@ -115,27 +118,17 @@ a {
       <div class="card-title">{{.Name}}</div>
       <div class="card-attribution">
         <div>
-          <div>Crafted By</div>
+          <div class="label">Rarity</div>
+          <div>{{.Rarity}}</div>
+        </div>
+        <div>
+          <div class="label">Crafted By</div>
           <div>{{.Author}}</div>
         </div>
-        <div>{{.Edition}}</div>
-      </div>
-    </div>
-
-    <div class="info-card">
-      <div class="info-card-header">
-        Owner
-      </div>
-      <div class="info-card-body">
-        <a href="/user/{{.Owner}}">
-          {{.Owner}}
-        </a>
-      </div>
-      <div class="info-card-header">
-        Obtained At
-      </div>
-      <div class="info-card-body">
-        {{.ObtainedAt}}
+        <div>
+          <div class="label">Edition</div>
+          <div>{{.Edition}}</div>
+        </div>
       </div>
     </div>
 

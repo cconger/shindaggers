@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -57,8 +56,12 @@ func main() {
 	r.HandleFunc("/", s.IndexHandler)
 	r.HandleFunc("/user/{id}", s.UserHandler)
 	r.HandleFunc("/knife/{id:[0-9]+}", s.KnifeHandler)
-	r.HandleFunc("/pull/{token}", s.PullHandler).Methods(http.MethodPost)
+
+	r.HandleFunc("/catalog/{id:[0-9]+}", s.CatalogView)
+	r.HandleFunc("/catalog", s.CatalogHandler)
+
 	r.HandleFunc("/oauth/redirect", s.OAuthHandler)
+	r.HandleFunc("/pull/{token}", s.PullHandler).Methods(http.MethodPost)
 
 	http.Handle("/", r)
 
@@ -78,7 +81,7 @@ func main() {
 	}()
 
 	<-interrupt
-	fmt.Println("Interrupt signal recieved. Shutting down...")
+	log.Println("Interrupt signal recieved. Shutting down...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	db.Close(ctx)
