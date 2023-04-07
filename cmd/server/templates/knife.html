@@ -1,143 +1,13 @@
+{{define "knife.html"}}
 <!DOCTYPE html>
 <html>
   <head>
     <title>Shindaggers - {{.Owner}}'s {{.Name}}</title>
-    <meta name="viewport" content="width=800px">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200;700&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/png" href="https://images.shindaggers.io/images/favicon.png">
 
-    <style>
-
-html {
-  min-height: 100%;
-}
-
-body {
-  background: radial-gradient(at 50% 10%, #060606 0%, #2c5267 100%);
-  font-family: Oswald, sans-serif;
-}
-.card {
-  width: 500px;
-  display: grid;
-  grid-template-columns: 500px;
-  grid-template-rows: 500px 200px 160px;
-  border: solid 10px rgb(20,20,40);
-  border-radius: 20px;
-  overflow: hidden;
-  background: #f5f5f5;
-  box-shadow: 10px 10px 30px rgba(0,0,0,0.9);
-  font-family: Oswald, sans-serif;
-  text-align: center;
-  cursor: pointer;
-  margin: 60px auto;
-  transform-style: preserve-3d;
-  perspective: 1000px;
-  font-size: 30px;
-}
-
-.card.rarity-common {
-  background: radial-gradient(at 50% 10%, #ffffff 0%, #f5f5f5 100%);
-}
-
-.card.rarity-uncommon {
-  background: radial-gradient(at 50% 10%, #1eff00 0%, #f5f5f5 100%);
-}
-
-.card.rarity-rare {
-  background: radial-gradient(at 50% 10%, #0070dd 0%, #f5f5f5 100%);
-}
-
-.card.rarity-super-rare {
-  background: radial-gradient(at 50% 10%, #a335ee 0%, #f5f5f5 100%);
-}
-
-.card.rarity-ultra-rare {
-  background: radial-gradient(at 50% 10%, #ff8000 0%, #f5f5f5 100%);
-}
-
-.card-title {
-  font-size: 50px;
-  border-top: solid thin black;
-}
-
-.card-attribution {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: 1fr;
-}
-
-.card-image img {
-  height: 100%;
-}
-
-
-.info-card {
-  width: 500px;
-  display: grid;
-  grid-template-colums: 500px;
-  grid-template-rows: 60px 120px 60px 120px;
-  border-radius: 20px;
-  background: white;
-  overflow: hidden;
-  background: #f5f5f5;
-  color: #010101;
-  box-shadow: 10px 10px 30px rgba(0,0,0,0.9);
-  font-family: Oswald, sans-serif;
-  margin: 30px auto;
-  padding: 30px;
-  font-size: 26px;
-}
-.info-card-header {
-  margin: 0 1em;
-  font-weight: 700;
-}
-
-.info-card-body {
-  font-weight: 200;
-  margin: 0 2em;
-}
-
-a {
-  text-decoration: underline;
-  color: black;
-}
-
-.label {
-  font-size: 16px;
-}
-
-.card .card-image {
-  position: relative;
-}
-
-.card .badges {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-}
-
-.badges > div {
-  margin-top: 5px;
-}
-
-.card .subscribed {
-  width: 38px;
-  height: 38px;
-  background: url('https://images.shindaggers.io/images/sub.png') no-repeat;
-}
-
-.card .verified {
-  width: 38px;
-  height: 39px;
-  background: url('https://images.shindaggers.io/images/verified.png') no-repeat;
-}
-
-    </style>
+    {{template "commonhead"}}
+    {{template "stylesheet"}}
   </head>
-  <body>
-
+  <body class="grad">
     <div class="card {{.RarityClass}}" data-tilt> 
       <div class="card-image">
         <img src="https://images.shindaggers.io/images/{{.ImageName}}"/>
@@ -187,3 +57,4 @@ a {
     <script type="text/javascript" src="https://images.shindaggers.io/scripts/vanilla-tilt.min.js"></script>
   </body>
 </html>
+{{end}}

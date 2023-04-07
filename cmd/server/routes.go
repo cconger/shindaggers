@@ -72,13 +72,37 @@ type Server struct {
 	twitchClientID string
 	twitchClient   *twitch.Client
 	baseURL        string
+
+	template *template.Template
 }
 
-func (s *Server) getTemplate(templateName string) (*template.Template, error) {
+func (s *Server) getTemplate() (*template.Template, error) {
 	if s.devMode {
-		return template.ParseFiles(path.Join("cmd", "server", "templates", templateName))
+		return template.ParseGlob(path.Join("cmd", "server", "templates", "*"))
 	}
-	return template.ParseFS(templates, path.Join("templates", templateName))
+
+	if s.template == nil {
+		t, err := template.ParseFS(templates, path.Join("templates", "*"))
+		if err != nil {
+			return nil, err
+		}
+		s.template = t
+	}
+
+	return s.template, nil
+}
+
+func (s *Server) renderTemplate(w http.ResponseWriter, name string, payload interface{}) {
+	t, err := s.getTemplate()
+	if err != nil {
+		servererr(w, err, http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	err = t.ExecuteTemplate(w, name, payload)
+	if err != nil {
+		log.Printf("err executing template %s: %s", name, err)
+	}
 }
 
 type PullListing struct {
@@ -110,12 +134,6 @@ func (s *Server) loginWithTwitchURL() string {
 func (s *Server) IndexHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	t, err := s.getTemplate("index.html")
-	if err != nil {
-		servererr(w, err, http.StatusInternalServerError)
-		return
-	}
-
 	knivesRes, err := s.db.GetLatestPulls(ctx)
 	if err != nil {
 		log.Printf("error getting latest pulls: %s", err)
@@ -139,8 +157,7 @@ func (s *Server) IndexHandler(w http.ResponseWriter, r *http.Request) {
 		Pulls:    pulls,
 	}
 
-	w.WriteHeader(http.StatusOK)
-	t.Execute(w, pl)
+	s.renderTemplate(w, "index.html", pl)
 }
 
 func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
@@ -270,22 +287,12 @@ func (s *Server) UserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	t, err := s.getTemplate("user.html")
-	if err != nil {
-		servererr(w, err, http.StatusInternalServerError)
-		return
-	}
-
 	payload := UserPagePayload{
 		User:   userRes,
 		Knives: knives,
 	}
 
-	err = t.Execute(w, payload)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error executing template: %s", err)
-	}
+	s.renderTemplate(w, "user.html", payload)
 }
 
 func (s *Server) KnifeHandler(w http.ResponseWriter, r *http.Request) {
@@ -305,22 +312,12 @@ func (s *Server) KnifeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t, err := s.getTemplate("knife.html")
-	if err != nil {
-		servererr(w, err, http.StatusInternalServerError)
-		return
-	}
-
 	payload := KnifePage{
 		Knife:       *knife,
 		RarityClass: className(knife.Rarity),
 	}
 
-	err = t.Execute(w, payload)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error executing template: %s", err)
-	}
+	s.renderTemplate(w, "knife.html", payload)
 }
 
 type PullRequest struct {
@@ -428,13 +425,7 @@ func (s *Server) CatalogHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	t, err := s.getTemplate("catalog.html")
-	if err != nil {
-		servererr(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	t.Execute(w, payload)
+	s.renderTemplate(w, "catalog.html", payload)
 }
 
 // Display the page that shows all the knives earnable
@@ -462,13 +453,7 @@ func (s *Server) CatalogView(w http.ResponseWriter, r *http.Request) {
 		className(knife.Rarity),
 	}
 
-	t, err := s.getTemplate("catalog-knife.html")
-	if err != nil {
-		servererr(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	t.Execute(w, payload)
+	s.renderTemplate(w, "catalog-knife.html", payload)
 }
 
 func timeAgo(t time.Time) string {

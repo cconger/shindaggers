@@ -1,137 +1,13 @@
+{{define "index.html"}}
 <!DOCTYPE html>
 <html>
   <head>
     <title>Shindaggers</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200;700&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/png" href="https://images.shindaggers.io/images/favicon.png">
-<style>
 
-
-html {
-  min-height: 100%;
-}
-
-
-body {
-  font-family: Oswald, sans-serif;
-  display: grid;
-  grid-template-rows: 100%;
-  grid-template-columns: minmax(auto, 1000px) minmax(400px, auto);
-  margin: 0;
-}
-
-section.intro {
-  padding: 1em;
-  background: rgb(240, 240, 255);
-}
-
-section.intro h1 {
-  font-size: 74px;
-}
-
-section.intro p {
-  font-size: 24px;
-}
-
-section.pulls {
-  height: 100%;
-  padding: 1em;
-  background: rgb(20,20,40);
-  color: white;
-}
-
-.pulls-list {
-  display: grid;
-}
-
-.pull {
-  display: grid;
-  grid-template-columns: 50px 1fr 3fr;
-  grid-gap: 10px;
-  font-size: 1.2em;
-  margin: 20px 0;
-  align-items: center;
-}
-
-.pulls-list a {
-  text-decoration: none;
-  color: inherit;
-}
-
-.pull .image img {
-  width: 100%;
-  height: 100%;
-}
-
-.pull .info {
-  font-size: 18px;
-}
-
-.pull .time {
-  font-size: 14px;
-}
-
-.rarity-common {
-  background: radial-gradient(at 0% 50%, rgba(255,255,255,0.5) 0%, rgba(0,0,0,0) 66%);
-}
-
-.rarity-common:hover {
-  background: radial-gradient(at 20% 50%, rgba(255,255,255,0.5) 0%, rgba(0,0,0,0) 66%);
-}
-
-.rarity-uncommon {
-  background: radial-gradient(at 0% 50%, rgba(30,255,0, 0.5) 0%, rgba(0,0,0,0) 66%);
-}
-
-.rarity-uncommon:hover {
-  background: radial-gradient(at 20% 50%, rgba(30,255,0, 0.5) 0%, rgba(0,0,0,0) 66%);
-}
-
-.rarity-rare {
-  background: radial-gradient(at 0% 50%, rgba(0,112,221, 0.5) 0%, rgba(0,0,0,0) 66%);
-}
-
-.rarity-rare:hover {
-  background: radial-gradient(at 20% 50%, rgba(0,112,221, 0.5) 0%, rgba(0,0,0,0) 66%);
-}
-
-.rarity-super-rare {
-  background: radial-gradient(at 0% 50%, rgba(163,53,238, 0.5) 0%, rgba(0,0,0,0) 66%);
-}
-
-.rarity-super-rare:hover {
-  background: radial-gradient(at 20% 50%, rgba(163,53,238, 0.5) 0%, rgba(0,0,0,0) 66%);
-}
-
-.rarity-ultra-rare {
-  background: radial-gradient(at 0% 50%, rgba(255,128,0, 0.5) 0%, rgba(0,0,0,0) 66%);
-}
-
-.rarity-ultra-rare:hover {
-  background: radial-gradient(at 20% 50%, rgba(255,128,0, 0.5) 0%, rgba(0,0,0,0) 66%);
-}
-
-@media screen and (max-width: 800px) {
-  body {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-  }
-}
-
-.intro > div {
-  margin: 1em 0;
-}
-
-.intro h3 {
-  margin-bottom: 0;
-}
-
-</style>
+    {{template "commonhead"}}
+    {{template "stylesheet"}}
   </head>
-  <body>
+  <body class="split">
     <section class="intro">
       <h1>Shindaggers</h1>
       <p>
@@ -188,3 +64,4 @@ section.pulls {
     </script>
   </body>
 </html>
+{{end}}
