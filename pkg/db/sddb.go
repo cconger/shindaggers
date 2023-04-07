@@ -54,6 +54,8 @@ SELECT
   owner.id,
   knives.rarity,
   knives.image_name,
+  knife_ownership.was_subscriber,
+  knife_ownership.is_verified,
   editions.name,
   knife_ownership.transacted_at
 FROM knife_ownership
@@ -93,6 +95,8 @@ func (sd *SDDB) GetLatestPulls(ctx context.Context) ([]*Knife, error) {
 			&knife.OwnerID,
 			&knife.Rarity,
 			&knife.ImageName,
+			&knife.Subscriber,
+			&knife.Verified,
 			&knife.Edition,
 			&obtainedAt,
 		)
@@ -122,6 +126,8 @@ SELECT
   owner.id,
   knives.rarity,
   knives.image_name,
+  knife_ownership.was_subscriber,
+  knife_ownership.is_verified,
   editions.name,
   knife_ownership.transacted_at
 FROM knife_ownership
@@ -161,6 +167,8 @@ func (sd *SDDB) GetKnife(ctx context.Context, knifeID int) (*Knife, error) {
 		&knife.OwnerID,
 		&knife.Rarity,
 		&knife.ImageName,
+		&knife.Subscriber,
+		&knife.Verified,
 		&knife.Edition,
 		&obtainedAt,
 	)
@@ -187,6 +195,8 @@ SELECT
   owner.id,
   knives.rarity,
   knives.image_name,
+  knife_ownership.was_subscriber,
+  knife_ownership.is_verified,
   editions.name,
   knife_ownership.transacted_at
 FROM knife_ownership
@@ -226,6 +236,8 @@ func (sd *SDDB) GetKnivesForUsername(ctx context.Context, username string) ([]*K
 			&knife.OwnerID,
 			&knife.Rarity,
 			&knife.ImageName,
+			&knife.Subscriber,
+			&knife.Verified,
 			&knife.Edition,
 			&obtainedAt,
 		)
@@ -244,18 +256,68 @@ func (sd *SDDB) GetKnivesForUsername(ctx context.Context, username string) ([]*K
 	return knives, nil
 }
 
-var getUserQuery = `
+var getUserTwitchIDQuery = `
 SELECT
   id,
   twitch_name,
   lookup_name,
+  IFNULL(twitch_id, '') as twitch_id,
+  created_at
+FROM users
+WHERE twitch_id = ?;
+`
+
+func (sd *SDDB) GetUserByTwitchID(ctx context.Context, id string) (*User, error) {
+	query, err := sd.db.Prepare(getUserTwitchIDQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := query.QueryContext(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil, ErrNotFound
+	}
+
+	var createdAt string
+
+	var user User
+	err = rows.Scan(
+		&user.ID,
+		&user.Name,
+		&user.LookupName,
+		&user.TwitchID,
+		&createdAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	user.CreatedAt, err = parseTimestamp(createdAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+var getUserUsernameQuery = `
+SELECT
+  id,
+  twitch_name,
+  lookup_name,
+  IFNULL(twitch_id, '') as twitch_id,
   created_at
 FROM users
 WHERE lookup_name = ?;
 `
 
-func (sd *SDDB) GetUser(ctx context.Context, username string) (*User, error) {
-	query, err := sd.db.Prepare(getUserQuery)
+func (sd *SDDB) GetUserByUsername(ctx context.Context, username string) (*User, error) {
+	query, err := sd.db.Prepare(getUserUsernameQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -277,6 +339,7 @@ func (sd *SDDB) GetUser(ctx context.Context, username string) (*User, error) {
 		&user.ID,
 		&user.Name,
 		&user.LookupName,
+		&user.TwitchID,
 		&createdAt,
 	)
 	if err != nil {
@@ -316,15 +379,15 @@ func (sd *SDDB) CreateUser(ctx context.Context, user *User) (*User, error) {
 		return nil, err
 	}
 
-	return sd.GetUser(ctx, lookupName)
+	return sd.GetUserByUsername(ctx, lookupName)
 }
 
 var (
 	getKnifeByName       = `SELECT id FROM knives WHERE name = ?;`
-	createKnifePullQuery = `INSERT INTO knife_ownership (user_id, knife_id, trans_type) VALUES (?, ?, ?);`
+	createKnifePullQuery = `INSERT INTO knife_ownership (user_id, knife_id, trans_type, was_subscriber, is_verified) VALUES (?, ?, ?, ?, ?);`
 )
 
-func (sd *SDDB) PullKnife(ctx context.Context, username string, knifename string) (*Knife, error) {
+func (sd *SDDB) PullKnife(ctx context.Context, userID int, knifename string, subscriber bool, verified bool) (*Knife, error) {
 	// TODO: Transactions
 
 	// Lookup knifeID by name
@@ -349,39 +412,16 @@ func (sd *SDDB) PullKnife(ctx context.Context, username string, knifename string
 		return nil, err
 	}
 
-	// Lookup user by name (create if missing)
-	user, err := sd.GetUser(ctx, username)
-	if err != nil {
-		if err == ErrNotFound {
-			user, err = sd.CreateUser(ctx, &User{
-				Name: username,
-			})
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
-	}
-
 	// Create the pull
 	createQ, err := sd.db.PrepareContext(ctx, createKnifePullQuery)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := createQ.ExecContext(ctx, user.ID, knifeID, "pull")
+	res, err := createQ.ExecContext(ctx, userID, knifeID, "pull", subscriber, verified)
 	if err != nil {
 		return nil, err
 	}
-
-	log.Printf(
-		"Created pull for %d of knife %d based on inputs %s and %s",
-		user.ID,
-		knifeID,
-		username,
-		knifename,
-	)
 
 	id, err := res.LastInsertId()
 	if err != nil {

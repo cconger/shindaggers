@@ -15,6 +15,8 @@ type Knife struct {
 	OwnerID    int
 	Rarity     string
 	ImageName  string
+	Verified   bool
+	Subscriber bool
 	Edition    string
 	ObtainedAt time.Time
 }
@@ -50,11 +52,13 @@ type KnifeDB interface {
 	GetLatestPulls(ctx context.Context) ([]*Knife, error)
 	GetKnife(ctx context.Context, knifeID int) (*Knife, error)
 	GetKnivesForUsername(ctx context.Context, username string) ([]*Knife, error)
-	GetUser(ctx context.Context, username string) (*User, error)
+
+	GetUserByTwitchID(ctx context.Context, id string) (*User, error)
+	GetUserByUsername(ctx context.Context, username string) (*User, error)
 
 	CreateUser(ctx context.Context, user *User) (*User, error)
 
-	PullKnife(ctx context.Context, username string, knifename string) (*Knife, error)
+	PullKnife(ctx context.Context, userID int, knifename string, subscriber bool, verified bool) (*Knife, error)
 
 	GetCollection(ctx context.Context) ([]*KnifeType, error)
 	GetKnifeType(ctx context.Context, id int) (*KnifeType, error)

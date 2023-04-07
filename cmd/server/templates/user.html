@@ -84,6 +84,34 @@ body {
 .rarity-ultra-rare {
   background: radial-gradient(at 50% 10%, #ff8000 0%, #f5f5f5 100%);
 }
+
+.inventory-knife .image {
+  position: relative;
+}
+
+.badges {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+}
+
+.badges > div {
+  margin-top: 2px;
+}
+
+.badges .subscribed {
+  width: 19px;
+  height: 19px;
+  background: url('https://images.shindaggers.io/images/sub.png') no-repeat;
+  background-size: 19px;
+}
+
+.badges .verified {
+  width: 19px;
+  height: 19px;
+  background: url('https://images.shindaggers.io/images/verified.png') no-repeat;
+  background-size: 19px;
+}
     </style>
   </head>
   <body>
@@ -95,12 +123,22 @@ body {
     </div>
     <div class="inventory">
       {{range .Knives}}
-      <div class="inventory-knife {{.RarityClass}}">
-        <a href="/knife/{{.InstanceID}}">
-          <img src="https://images.shindaggers.io/images/{{.ImageName}}"/>
-          <div class="name">{{.Name}}</div>
-        </a>
-      </div>
+      <a href="/knife/{{.InstanceID}}">
+        <div class="inventory-knife {{.RarityClass}}">
+            <div class="image">
+              <img src="https://images.shindaggers.io/images/{{.ImageName}}"/>
+              <div class="badges">
+              {{ if .Verified }}
+              <div class="verified" title="Verified Edition"></div>
+              {{ end }}
+              {{ if .Subscriber }}
+              <div class="subscribed" title="Subscriber Issue"></div>
+              {{ end }}
+              </div>
+            </div>
+            <div class="name">{{.Name}}</div>
+        </div>
+      </a>
       {{end}}
     </div>
   </body>

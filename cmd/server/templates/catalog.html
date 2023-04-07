@@ -31,7 +31,7 @@ body {
   border-radius: 10px;
   overflow: hidden;
   grid-template-columns: 1fr;
-  grid-template-rows: 200px 100px;
+  grid-template-rows: 200px 100px 50px;
   font-family: Oswald, sans-serif;
   text-align: center;
   box-shadow: 5px 5px 15px rgba(0,0,0,0.9);
@@ -93,13 +93,13 @@ body {
     <h2 class="header">Collection</h2>
     <div class="inventory">
       {{range .Knives}}
-        <div class="inventory-knife {{.RarityClass}}">
-          <a href="/catalog/{{.ID}}">
-            <img src="https://images.shindaggers.io/images/{{.ImageName}}"/>
-            <div class="name">{{.Name}}</div>
-            <div class="author">{{.Author}}</div>
-          </a>
-        </div>
+        <a href="/catalog/{{.ID}}">
+          <div class="inventory-knife {{.RarityClass}}">
+              <img src="https://images.shindaggers.io/images/{{.ImageName}}"/>
+              <div class="name">{{.Name}}</div>
+              <div class="author">{{.Author}}</div>
+          </div>
+        </a>
       {{end}}
     </div>
   </body>

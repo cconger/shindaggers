@@ -185,7 +185,7 @@ func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get or create user in our db
-	user, err := s.db.GetUser(ctx, twitchUser.Login)
+	user, err := s.db.GetUserByTwitchID(ctx, twitchUser.ID)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			user, err = s.db.CreateUser(ctx, &db.User{
@@ -250,7 +250,7 @@ func (s *Server) UserHandler(w http.ResponseWriter, r *http.Request) {
 
 	username := strings.ToLower(vars["id"])
 
-	userRes, err := s.db.GetUser(ctx, username)
+	userRes, err := s.db.GetUserByUsername(ctx, username)
 	if err != nil {
 		servererr(w, err, http.StatusBadRequest)
 		return
@@ -324,11 +324,17 @@ func (s *Server) KnifeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PullRequest struct {
-	TwitchID  string `json:"twitch_id"`
+	TwitchID  string `json:"user_id"`
 	Username  string `json:"username"`
 	Knifename string `json:"knifename"`
+
+	// These are ints to be more tolerant to the ingets model
+	Verified   int `json:"verified"`
+	Subscriber int `json:"sub_status"`
 }
 
+// PullHandler is the webhook handler for recording a knife pull after its been executed locally by the
+// streamer
 func (s *Server) PullHandler(w http.ResponseWriter, r *http.Request) {
 	if s.webhookSecret == "" {
 		w.WriteHeader(http.StatusForbidden)
@@ -351,8 +357,30 @@ func (s *Server) PullHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	// TODO: lookup user by id or username here instead of in db
-	k, err := s.db.PullKnife(ctx, reqBody.Username, reqBody.Knifename)
+	log.Printf("Operating on %+v", reqBody)
+
+	var user *db.User
+	if reqBody.TwitchID != "" {
+		user, err = s.db.GetUserByTwitchID(ctx, reqBody.TwitchID)
+	} else {
+		user, err = s.db.GetUserByUsername(ctx, reqBody.Username)
+	}
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			log.Printf("pullHandler creating user")
+			user, err = s.db.CreateUser(ctx, &db.User{
+				Name:     reqBody.Username,
+				TwitchID: reqBody.TwitchID,
+			})
+		}
+		if err != nil {
+			log.Printf("pullHandler getting user: %s", err)
+			servererr(w, err, http.StatusBadRequest)
+			return
+		}
+	}
+
+	k, err := s.db.PullKnife(ctx, user.ID, reqBody.Knifename, reqBody.Subscriber > 0, reqBody.Verified > 0)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			w.WriteHeader(http.StatusBadRequest)
