@@ -209,7 +209,7 @@ ORDER BY knife_ownership.transacted_at DESC;
 `
 
 func (sd *SDDB) GetKnivesForUsername(ctx context.Context, username string) ([]*Knife, error) {
-	query, err := sd.db.Prepare(getKnifeForUserQuery)
+	query, err := sd.db.PrepareContext(ctx, getKnifeForUserQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -388,8 +388,6 @@ var (
 )
 
 func (sd *SDDB) PullKnife(ctx context.Context, userID int, knifename string, subscriber bool, verified bool) (*Knife, error) {
-	// TODO: Transactions
-
 	// Lookup knifeID by name
 	knifeq, err := sd.db.Prepare(getKnifeByName)
 	if err != nil {
@@ -490,8 +488,6 @@ INSERT INTO user_auth (user_id, token, access_token, refresh_token, expires_at) 
 `
 
 func (sd *SDDB) SaveAuth(ctx context.Context, auth *UserAuth) (*UserAuth, error) {
-	// TODO: Validate required fields on auth
-
 	query, err := sd.db.PrepareContext(ctx, saveAuthQuery)
 	if err != nil {
 		return nil, err
@@ -509,7 +505,6 @@ func (sd *SDDB) SaveAuth(ctx context.Context, auth *UserAuth) (*UserAuth, error)
 		return nil, err
 	}
 
-	// TODO: this should actually be the query... but w/e
 	return auth, nil
 }
 

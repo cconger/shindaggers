@@ -38,7 +38,7 @@ func mustBool(s string) bool {
 }
 
 // importBladechain attempts to process a tab separated copy of the bladechain
-func importBladechain(path string) {
+func importBladechain(path string, offset int) {
 	f, err := os.Open(path)
 	if err != nil {
 		log.Fatalf("Unable to open file: %s", err)
@@ -61,7 +61,7 @@ func importBladechain(path string) {
 			log.Fatalf("unable to parse line, not enough values: %s", line)
 		}
 
-		t, err := time.Parse(timeLayout, fields[0])
+		t, err := time.ParseInLocation(timeLayout, fields[0], time.Local)
 		if err != nil {
 			log.Fatalf("unable to parse timestamp: %s - %s", fields[0], err)
 		}
@@ -102,7 +102,10 @@ func importBladechain(path string) {
 	knivesByName := make(map[string]int)
 	usersByName := make(map[string]int)
 
-	insertPullQuery, err := db.Prepare("INSERT INTO knife_ownership (user_id, knife_id, trans_type, transacted_at) VALUES (?, ?, ?, ?);")
+	insertPullQuery, err := db.Prepare(`
+  INSERT INTO knife_ownership
+    (user_id, knife_id, trans_type, transacted_at, instance_id, was_subscriber, is_verified)
+  VALUES (?, ?, ?, ?, ?, ?, ?);`)
 	if err != nil {
 		log.Fatalf("unable to prepare knife creation query: %s", err)
 	}
@@ -146,15 +149,14 @@ func importBladechain(path string) {
 			knife = id
 		}
 
-		res, err := insertPullQuery.Exec(user, knife, "pull", p.time)
+		res, err := insertPullQuery.Exec(user, knife, "pull", p.time, i+offset, p.subscriber, p.verified)
 		if err != nil {
 			log.Fatalf("unable to create pull: %s", err)
 		}
-		id, err := res.LastInsertId()
+		_, err = res.LastInsertId()
 		if err != nil {
 			log.Fatalf("unable to get id for created pull: %s", err)
 		}
-		log.Printf("%+v saved to %d\n\n", p, id)
 	}
 }
 
@@ -197,27 +199,26 @@ func getOrCreateKnifeIDByName(db *sql.DB, name string, rarity string, author_id 
 }
 
 func getOrCreateUserIDByName(db *sql.DB, name string, created_at time.Time) (int, error) {
-	getUserQuery, err := db.Prepare("SELECT id FROM users WHERE twitch_name = ?")
+	lookupName := strings.ToLower(name)
+	getUserQuery, err := db.Prepare("SELECT id FROM users WHERE lookup_name = ?")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	rows, err := getUserQuery.Query(name)
+	rows, err := getUserQuery.Query(lookupName)
 	if err != nil {
 		return 0, err
 	}
 	defer rows.Close()
 
 	if !rows.Next() {
-		return 0, fmt.Errorf("Create user is disabled")
-
 		// Insert User
-		createUserQuery, err := db.Prepare("INSERT INTO users (twitch_name, created_at) VALUES(?, ?)")
+		createUserQuery, err := db.Prepare("INSERT INTO users (twitch_name, lookup_name, created_at) VALUES(?, ?, ?)")
 		if err != nil {
 			return 0, fmt.Errorf("unable to prepare insert query: %w", err)
 		}
 
-		res, err := createUserQuery.Exec(name, created_at)
+		res, err := createUserQuery.Exec(name, lookupName, created_at)
 		if err != nil {
 			return 0, err
 		}

@@ -329,8 +329,8 @@ type PullRequest struct {
 	Knifename string `json:"knifename"`
 
 	// These are ints to be more tolerant to the ingets model
-	Verified   int `json:"verified"`
-	Subscriber int `json:"sub_status"`
+	Verified   string `json:"verified"`
+	Subscriber string `json:"sub_status"`
 }
 
 // PullHandler is the webhook handler for recording a knife pull after its been executed locally by the
@@ -380,7 +380,10 @@ func (s *Server) PullHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	k, err := s.db.PullKnife(ctx, user.ID, reqBody.Knifename, reqBody.Subscriber > 0, reqBody.Verified > 0)
+	subscriber := reqBody.Subscriber == "1" || strings.ToLower(reqBody.Subscriber) == "true"
+	verified := reqBody.Verified == "1" || strings.ToLower(reqBody.Verified) == "true"
+
+	k, err := s.db.PullKnife(ctx, user.ID, reqBody.Knifename, subscriber, verified)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			w.WriteHeader(http.StatusBadRequest)
