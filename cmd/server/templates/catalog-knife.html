@@ -1,4 +1,3 @@
-{{define "catalogknife"}}
 <!DOCTYPE html>
 <html>
   <head>
@@ -9,7 +8,7 @@
     {{template "commonhead"}}
     {{template "stylesheet"}}
   </head>
-  <body>
+  <body class="grad">
     <div class="card {{.RarityClass}}" data-tilt> 
       <div class="card-image">
         <img src="https://images.shindaggers.io/images/{{.ImageName}}"/>
@@ -34,4 +33,3 @@
     <script type="text/javascript" src="https://images.shindaggers.io/scripts/vanilla-tilt.min.js"></script>
   </body>
 </html>
-{{end}}
