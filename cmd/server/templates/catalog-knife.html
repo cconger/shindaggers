@@ -3,6 +3,9 @@
 <html>
   <head>
     <title>Shindaggers - {{.Name}}</title>
+    <meta property="og:title" content="{{.Name}}" />
+    <meta property="og:image" content="https://images.shindaggers.io/images/{{.ImageName}}" />
+    <meta property="og:description" content="{{.Name}} a {{.Rarity}} blade crafted by {{.Author}}" />
     {{template "commonhead"}}
     {{template "stylesheet"}}
   </head>
