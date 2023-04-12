@@ -1,0 +1,5 @@
+ALTER TABLE knives DROP COLUMN edition_id;
+
+ALTER TABLE knife_ownership ADD COLUMN edition_id INT DEFAULT 1;
+
+ALTER TABLE users ADD COLUMN admin BOOLEAN DEFAULT FALSE;

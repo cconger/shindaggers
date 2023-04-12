@@ -62,7 +62,7 @@ FROM knife_ownership
 JOIN knives ON knife_ownership.knife_id = knives.id
 LEFT JOIN users owner ON knife_ownership.user_id = owner.id
 LEFT JOIN users author ON knives.author_id = author.id
-JOIN editions ON knives.edition_id = editions.id
+JOIN editions ON knife_ownership.edition_id = editions.id
 WHERE owner.id != 166
 ORDER BY knife_ownership.transacted_at DESC
 LIMIT 15;
@@ -134,7 +134,7 @@ FROM knife_ownership
 JOIN knives ON knife_ownership.knife_id = knives.id
 LEFT JOIN users owner ON knife_ownership.user_id = owner.id
 LEFT JOIN users author ON knives.author_id = author.id
-JOIN editions ON knives.edition_id = editions.id
+JOIN editions ON knife_ownership.edition_id = editions.id
 WHERE knife_ownership.instance_id = ?;
 `
 
@@ -203,7 +203,7 @@ FROM knife_ownership
 JOIN knives ON knife_ownership.knife_id = knives.id
 LEFT JOIN users owner ON knife_ownership.user_id = owner.id
 LEFT JOIN users author ON knives.author_id = author.id
-JOIN editions ON knives.edition_id = editions.id
+JOIN editions ON knife_ownership.edition_id = editions.id
 WHERE owner.lookup_name = ?
 ORDER BY knife_ownership.transacted_at DESC;
 `
@@ -384,10 +384,10 @@ func (sd *SDDB) CreateUser(ctx context.Context, user *User) (*User, error) {
 
 var (
 	getKnifeByName       = `SELECT id FROM knives WHERE name = ?;`
-	createKnifePullQuery = `INSERT INTO knife_ownership (user_id, knife_id, trans_type, was_subscriber, is_verified) VALUES (?, ?, ?, ?, ?);`
+	createKnifePullQuery = `INSERT INTO knife_ownership (user_id, knife_id, trans_type, was_subscriber, is_verified, edition_id) VALUES (?, ?, ?, ?, ?, ?);`
 )
 
-func (sd *SDDB) PullKnife(ctx context.Context, userID int, knifename string, subscriber bool, verified bool) (*Knife, error) {
+func (sd *SDDB) PullKnife(ctx context.Context, userID int, knifename string, subscriber bool, verified bool, edition_id int) (*Knife, error) {
 	// Lookup knifeID by name
 	knifeq, err := sd.db.Prepare(getKnifeByName)
 	if err != nil {
@@ -416,7 +416,7 @@ func (sd *SDDB) PullKnife(ctx context.Context, userID int, knifename string, sub
 		return nil, err
 	}
 
-	res, err := createQ.ExecContext(ctx, userID, knifeID, "pull", subscriber, verified)
+	res, err := createQ.ExecContext(ctx, userID, knifeID, "pull", subscriber, verified, edition_id)
 	if err != nil {
 		return nil, err
 	}
@@ -515,12 +515,10 @@ SELECT
   author.twitch_name,
   author.id,
   knives.rarity,
-  knives.image_name,
-  editions.name
+  knives.image_name
 FROM knives
 LEFT JOIN users author ON knives.author_id = author.id
-JOIN editions ON knives.edition_id = editions.id
-ORDER BY knives.edition_id, knives.id ASC;
+ORDER BY knives.id ASC;
 `
 
 func (sd *SDDB) GetCollection(ctx context.Context) ([]*KnifeType, error) {
@@ -545,7 +543,6 @@ func (sd *SDDB) GetCollection(ctx context.Context) ([]*KnifeType, error) {
 			&k.AuthorID,
 			&k.Rarity,
 			&k.ImageName,
-			&k.Edition,
 		)
 		if err != nil {
 			log.Printf("Error: scan GetCollection: %s", err)
@@ -565,11 +562,9 @@ SELECT
   author.twitch_name,
   author.id,
   knives.rarity,
-  knives.image_name,
-  editions.name
+  knives.image_name
 FROM knives
 LEFT JOIN users author ON knives.author_id = author.id
-JOIN editions ON knives.edition_id = editions.id
 WHERE knives.id = ?
 LIMIT 1;
 `
@@ -598,7 +593,6 @@ func (sd *SDDB) GetKnifeType(ctx context.Context, id int) (*KnifeType, error) {
 		&k.AuthorID,
 		&k.Rarity,
 		&k.ImageName,
-		&k.Edition,
 	)
 	if err != nil {
 		log.Printf("Error: scan GetCollection: %s", err)
@@ -606,4 +600,140 @@ func (sd *SDDB) GetKnifeType(ctx context.Context, id int) (*KnifeType, error) {
 	}
 
 	return &k, nil
+}
+
+var createKnifeTypeQuery = `
+INSERT INTO knives (name, author_id, rarity, image_name) VALUES (?, ?, ?, ?);
+`
+
+func (sd *SDDB) CreateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeType, error) {
+	q, err := sd.db.PrepareContext(ctx, createKnifeTypeQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := q.ExecContext(ctx, knife.Name, knife.AuthorID, knife.Rarity, knife.ImageName)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	return sd.GetKnifeType(ctx, int(id))
+}
+
+var createEditionQuery = `
+INSERT INTO editions (name) VALUES (?);
+`
+
+func (sd *SDDB) CreateEdition(ctx context.Context, edition *Edition) (*Edition, error) {
+	q, err := sd.db.PrepareContext(ctx, createEditionQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := q.ExecContext(ctx, edition.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	return sd.GetEdition(ctx, int(id))
+}
+
+var getEditionQuery = `
+SELECT 
+  id,
+  name,
+  updated_at
+FROM editions
+WHERE id = ?
+LIMIT 1;
+`
+
+// GetEdition returns the edition with the given ID.
+func (sd *SDDB) GetEdition(ctx context.Context, id int) (*Edition, error) {
+	q, err := sd.db.PrepareContext(ctx, getEditionQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := q.QueryContext(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if !rows.Next() {
+		return nil, ErrNotFound
+	}
+
+	var edition Edition
+	var timeString string
+	err = rows.Scan(
+		&edition.ID,
+		&edition.Name,
+		&timeString,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	edition.UpdatedAt, err = parseTimestamp(timeString)
+	if err != nil {
+		return nil, err
+	}
+
+	return &edition, nil
+}
+
+var getEditionsQuery = `
+SELECT 
+  id,
+  name,
+  updated_at
+FROM editions
+ORDER BY id ASC;
+`
+
+func (sd *SDDB) GetEditions(ctx context.Context) ([]*Edition, error) {
+	q, err := sd.db.PrepareContext(ctx, getEditionsQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := q.QueryContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res := []*Edition{}
+
+	for rows.Next() {
+		var edition Edition
+		var timeString string
+		err := rows.Scan(
+			&edition.ID,
+			&edition.Name,
+			&timeString,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		edition.UpdatedAt, err = parseTimestamp(timeString)
+		if err != nil {
+			return nil, err
+		}
+
+		res = append(res, &edition)
+	}
+
+	return res, nil
 }

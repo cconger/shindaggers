@@ -22,6 +22,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const AUTH_COOKIE = "auth"
+
 type KnifePage struct {
 	db.Knife
 
@@ -246,6 +248,8 @@ func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Set user cookie
+
 	// Redirect to user page
 	http.Redirect(
 		w,
@@ -328,6 +332,8 @@ type PullRequest struct {
 	// These are ints to be more tolerant to the ingets model
 	Verified   string `json:"verified"`
 	Subscriber string `json:"sub_status"`
+
+	Edition string `json:"edition"`
 }
 
 // PullHandler is the webhook handler for recording a knife pull after its been executed locally by the
@@ -380,7 +386,15 @@ func (s *Server) PullHandler(w http.ResponseWriter, r *http.Request) {
 	subscriber := reqBody.Subscriber == "1" || strings.ToLower(reqBody.Subscriber) == "true"
 	verified := reqBody.Verified == "1" || strings.ToLower(reqBody.Verified) == "true"
 
-	k, err := s.db.PullKnife(ctx, user.ID, reqBody.Knifename, subscriber, verified)
+	edition := 1
+	edition, err = strconv.Atoi(reqBody.Edition)
+	if err != nil {
+		log.Printf("got edition %s and could not parse to number", reqBody.Edition)
+		servererr(w, fmt.Errorf("unprocessable edition %s: %w", reqBody.Edition, err), http.StatusBadRequest)
+		return
+	}
+
+	k, err := s.db.PullKnife(ctx, user.ID, reqBody.Knifename, subscriber, verified, edition)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			w.WriteHeader(http.StatusBadRequest)
@@ -454,6 +468,20 @@ func (s *Server) CatalogView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.renderTemplate(w, "catalog-knife.html", payload)
+}
+
+func (s *Server) AdminCreateKnife(w http.ResponseWriter, r *http.Request) {
+	servererr(w, fmt.Errorf("NOT IMPLEMENTED"), http.StatusInternalServerError)
+}
+
+func (s *Server) OnlyAdmin(inner http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Read the cookie for the user
+		// Check if user is Admin
+		// Then call inner otherwise 403
+
+		inner(w, r)
+	}
 }
 
 func timeAgo(t time.Time) string {

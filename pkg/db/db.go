@@ -28,7 +28,6 @@ type KnifeType struct {
 	AuthorID  int
 	Rarity    string
 	ImageName string
-	Edition   string
 }
 
 type User struct {
@@ -36,6 +35,7 @@ type User struct {
 	Name       string
 	LookupName string
 	TwitchID   string
+	Admin      bool
 	CreatedAt  time.Time
 }
 
@@ -48,6 +48,12 @@ type UserAuth struct {
 	UpdatedAt    time.Time
 }
 
+type Edition struct {
+	ID        int
+	Name      string
+	UpdatedAt time.Time
+}
+
 type KnifeDB interface {
 	GetLatestPulls(ctx context.Context) ([]*Knife, error)
 	GetKnife(ctx context.Context, knifeID int) (*Knife, error)
@@ -58,10 +64,15 @@ type KnifeDB interface {
 
 	CreateUser(ctx context.Context, user *User) (*User, error)
 
-	PullKnife(ctx context.Context, userID int, knifename string, subscriber bool, verified bool) (*Knife, error)
+	PullKnife(ctx context.Context, userID int, knifename string, subscriber bool, verified bool, edition_id int) (*Knife, error)
+	CreateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeType, error)
+	CreateEdition(ctx context.Context, edition *Edition) (*Edition, error)
 
 	GetCollection(ctx context.Context) ([]*KnifeType, error)
 	GetKnifeType(ctx context.Context, id int) (*KnifeType, error)
+
+	// TODO: Pagination
+	GetEditions(ctx context.Context) ([]*Edition, error)
 
 	// Twitch Auth
 	GetAuth(ctx context.Context, token []byte) (*UserAuth, error)
