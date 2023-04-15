@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Admin Knife: {{.ID}} {{.Name}}</title>
+    {{template "commonhead"}}
+    {{template "stylesheet"}}
+  </head>
+
+  <body class="grad">
+    <form action="/admin/knife/{{.ID}}" method="put" enctype="multipart/form-data">
+      <label for="name">Knife Name:</label>
+      <input type="text" value="{{.Name}}" id="name" name="name" required><br>
+
+      <label for="author">Author's Name:</label>
+      <input type="text" value="{{.Author}}" id="author" name="author" required><br>
+
+      <label for="rarity">Rarity:</label>
+      <select id="rarity" name="rarity">
+        <option value="Common" {{if eq .Rarity "Common"}}selected="selected"{{ end }} >Common</option>
+        <option value="Uncommon" {{if eq .Rarity "Uncommon"}}selected="selected"{{ end }}>Uncommon</option>
+        <option value="Rare" {{if eq .Rarity "Rare"}}selected="selected"{{ end }}>Rare</option>
+        <option value="Super Rare" {{if eq .Rarity "Super Rare"}}selected="selected"{{ end }}>Super Rare</option>
+        <option value="Ultra Rare" {{if eq .Rarity "Ultra Rare"}}selected="selected"{{ end }}>Ultra Rare</option>
+      </select><br>
+
+      <img src="https://images.shindaggers.io/images/{{.ImageName}}" />
+      <label for="image">New Image:</label>
+      <input type="file" id="image" name="image" accept="image/*" required><br>
+
+      <input type="submit" value="Update"/>
+    </form>
+
+    <input type="button" onclick="handleDelete()" value="Delete Knife" />
+
+    <script type="text/javascript">
+      function handleDelete() {
+        alert("not implemented");
+      }
+    </script>
+  </body>
+</html>

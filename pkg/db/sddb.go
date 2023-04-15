@@ -256,6 +256,57 @@ func (sd *SDDB) GetKnivesForUsername(ctx context.Context, username string) ([]*K
 	return knives, nil
 }
 
+var getUserIDQuery = `
+SELECT
+  id,
+  twitch_name,
+  lookup_name,
+  admin,
+  IFNULL(twitch_id, '') as twitch_id,
+  created_at
+FROM users
+WHERE id = ?;
+`
+
+func (sd *SDDB) GetUserByID(ctx context.Context, id int) (*User, error) {
+	query, err := sd.db.Prepare(getUserIDQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := query.QueryContext(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil, ErrNotFound
+	}
+
+	var createdAt string
+
+	var user User
+	err = rows.Scan(
+		&user.ID,
+		&user.Name,
+		&user.LookupName,
+		&user.Admin,
+		&user.TwitchID,
+		&createdAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	user.CreatedAt, err = parseTimestamp(createdAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
 var getUserTwitchIDQuery = `
 SELECT
   id,
@@ -736,4 +787,12 @@ func (sd *SDDB) GetEditions(ctx context.Context) ([]*Edition, error) {
 	}
 
 	return res, nil
+}
+
+func (sd *SDDB) DeleteKnifeType(ctx context.Context, knife *KnifeType) error {
+	return fmt.Errorf("NOT IMPLEMENTED")
+}
+
+func (sd *SDDB) UpdateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeType, error) {
+	return nil, fmt.Errorf("NOT IMPLEMENTED")
 }
