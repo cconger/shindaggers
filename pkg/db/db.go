@@ -59,6 +59,7 @@ type KnifeDB interface {
 	GetKnife(ctx context.Context, knifeID int) (*Knife, error)
 	GetKnivesForUsername(ctx context.Context, username string) ([]*Knife, error)
 
+	GetUserByID(ctx context.Context, id int) (*User, error)
 	GetUserByTwitchID(ctx context.Context, id string) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
 
@@ -71,7 +72,9 @@ type KnifeDB interface {
 	GetCollection(ctx context.Context) ([]*KnifeType, error)
 	GetKnifeType(ctx context.Context, id int) (*KnifeType, error)
 
-	// TODO: Pagination
+	UpdateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeType, error)
+	DeleteKnifeType(ctx context.Context, knife *KnifeType) error
+
 	GetEditions(ctx context.Context) ([]*Edition, error)
 
 	// Twitch Auth

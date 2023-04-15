@@ -357,3 +357,99 @@ a {
 </style>
 
 {{end}}
+
+{{define "admin-stylesheet"}}
+<style>
+.admin-page {
+  width: 800px;
+  margin: 0 auto;
+  padding: 1em;
+  background: #efefef;
+}
+
+.admin-page .title {
+  color: #010101;
+}
+
+.admin-page form {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  font-size: 22px;
+}
+
+.admin-page form label {
+  margin-right: 1em;
+}
+
+.admin-page form input {
+  font-size: 22px;
+}
+
+.admin-page form select {
+  font-size: 22px;
+}
+
+.admin-page form > div {
+  height: 60px;
+}
+
+.admin-page form > div.image {
+  height: auto;
+}
+
+.admin-page div.image img {
+  width: 400px;
+}
+
+.admin-page form .controls {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 230px);
+  grid-gap: 40px;
+  margin: 1em;
+}
+
+.admin-page form .submit {
+  text-align: center;
+  border-radius: 30px;
+  height: 60px;
+  outline: none;
+  border: none;
+  color: #fff;
+  font-size: 22px;
+  background: #2f2f2f;
+  cursor: pointer;
+}
+
+.admin-page form .submit:hover {
+  background: #1f1f1f;
+}
+
+.admin-page form .delete {
+  text-align: center;
+  border-radius: 30px;
+  height: 60px;
+  outline: none;
+  border: solid 3px red;
+  color: red;
+  font-size: 22px;
+  background: none;
+  cursor: pointer;
+}
+
+.admin-page form .delete:hover {
+  background: rgba(255, 0, 0, 0.3);
+}
+
+.admin-page .knives {
+  display: grid;
+  grid-template-columns: auto auto auto auto auto;
+}
+
+.admin-page .knives .header {
+  color: #010101;
+  font-weight: bold;
+}
+
+</style>
+{{end}}

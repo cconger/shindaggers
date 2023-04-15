@@ -14,6 +14,8 @@ import (
 	"github.com/cconger/shindaggers/pkg/twitch"
 
 	"github.com/gorilla/mux"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 // Webserver for fronting the database.
@@ -34,6 +36,20 @@ func main() {
 		baseURL = "http://localhost:8080"
 	}
 
+	// Credentials to be able to upload images
+	r2AccessKey := os.Getenv("CLOUDFLARE_SECRET")
+	r2KeyID := os.Getenv("CLOUDFLARE_CLIENT_ID")
+	storageEndpoint := os.Getenv("STORAGE_ENDPOINT")
+
+	minioClient, err := minio.New(storageEndpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(r2KeyID, r2AccessKey, ""),
+		Secure: true,
+	})
+	if err != nil {
+		log.Printf("Could not initialize minioClient, image uploading will not work: %s", err)
+		minioClient = nil
+	}
+
 	tw, err := twitch.NewClient(clientID, clientSecret)
 	if err != nil {
 		log.Fatalf("failed to create twitchclient: %s", err)
@@ -49,11 +65,15 @@ func main() {
 		webhookSecret:  os.Getenv("WEBHOOK_SECRET"),
 		twitchClientID: clientID,
 		twitchClient:   tw,
-		baseURL:        baseURL,
+		minioClient:    minioClient,
+		bucketName:     "sd-images",
+
+		baseURL: baseURL,
 	}
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", s.IndexHandler)
+	r.HandleFunc("/me", s.Me)
 	r.HandleFunc("/user/{id}", s.UserHandler)
 	r.HandleFunc("/knife/{id:[0-9]+}", s.KnifeHandler)
 
@@ -62,6 +82,13 @@ func main() {
 
 	r.HandleFunc("/oauth/redirect", s.OAuthHandler)
 	r.HandleFunc("/pull/{token}", s.PullHandler).Methods(http.MethodPost)
+
+	r.HandleFunc("/admin", s.OnlyAdmin(s.AdminIndex))
+	r.HandleFunc("/admin/knife", s.OnlyAdmin(s.AdminKnifeList)).Methods(http.MethodGet)
+	r.HandleFunc("/admin/knife", s.OnlyAdmin(s.AdminCreateKnife)).Methods(http.MethodPost)
+	r.HandleFunc("/admin/knife/{id:[0-9]+}", s.OnlyAdmin(s.AdminKnife)).Methods(http.MethodGet)
+	r.HandleFunc("/admin/knife/{id:[0-9]+}", s.OnlyAdmin(s.AdminUpdateKnife)).Methods(http.MethodPut)
+	r.HandleFunc("/admin/knife/{id:[0-9]+}", s.OnlyAdmin(s.AdminDeleteKnife)).Methods(http.MethodDelete)
 
 	http.Handle("/", r)
 

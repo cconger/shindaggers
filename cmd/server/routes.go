@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"embed"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,6 +22,7 @@ import (
 	"github.com/cconger/shindaggers/pkg/twitch"
 
 	"github.com/gorilla/mux"
+	"github.com/minio/minio-go/v7"
 )
 
 const AUTH_COOKIE = "auth"
@@ -74,6 +77,8 @@ type Server struct {
 	twitchClientID string
 	twitchClient   *twitch.Client
 	baseURL        string
+	minioClient    *minio.Client
+	bucketName     string
 
 	template *template.Template
 }
@@ -162,6 +167,17 @@ func (s *Server) IndexHandler(w http.ResponseWriter, r *http.Request) {
 	s.renderTemplate(w, "index.html", pl)
 }
 
+func (s *Server) Me(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, err := s.getUserForRequest(ctx, r)
+	if err != nil {
+		servererr(w, fmt.Errorf("Unable to determine who you are: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	http.Redirect(w, r, s.baseURL+"/user/"+user.LookupName, http.StatusTemporaryRedirect)
+}
+
 func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -248,7 +264,16 @@ func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	encodedToken := base64.RawStdEncoding.EncodeToString(token)
+
 	// Set user cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     AUTH_COOKIE,
+		Value:    encodedToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   !s.devMode,
+	})
 
 	// Redirect to user page
 	http.Redirect(
@@ -297,6 +322,46 @@ func (s *Server) UserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.renderTemplate(w, "user.html", payload)
+}
+
+func (s *Server) AdminIndex(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	knives, err := s.db.GetCollection(ctx)
+	if err != nil {
+		servererr(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	s.renderTemplate(w, "admin.html", struct {
+		Knives []*db.KnifeType
+	}{
+		Knives: knives,
+	})
+}
+
+func (s *Server) getUserForRequest(ctx context.Context, r *http.Request) (*db.User, error) {
+	cookie, err := r.Cookie(AUTH_COOKIE)
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := base64.RawStdEncoding.DecodeString(cookie.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	auth, err := s.db.GetAuth(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := s.db.GetUserByID(ctx, auth.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func (s *Server) KnifeHandler(w http.ResponseWriter, r *http.Request) {
@@ -442,7 +507,7 @@ func (s *Server) CatalogHandler(w http.ResponseWriter, r *http.Request) {
 	s.renderTemplate(w, "catalog.html", payload)
 }
 
-// Display the page that shows all the knives earnable
+// CatalogView renders a page showing a specific earnable knife
 func (s *Server) CatalogView(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	vars := mux.Vars(r)
@@ -470,8 +535,194 @@ func (s *Server) CatalogView(w http.ResponseWriter, r *http.Request) {
 	s.renderTemplate(w, "catalog-knife.html", payload)
 }
 
+// AdminKnifeList renders the admin page for viewing knives
+func (s *Server) AdminKnifeList(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "NOT IMPLEMENTED", http.StatusInternalServerError)
+}
+
+// AdminKnife renders a page showing a current knife with a form to update
+func (s *Server) AdminKnife(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		servererr(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	knife, err := s.db.GetKnifeType(ctx, id)
+	if err != nil {
+		servererr(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	payload := struct {
+		*db.KnifeType
+		RarityClass string
+	}{
+		knife,
+		className(knife.Rarity),
+	}
+
+	s.renderTemplate(w, "admin-knife.html", payload)
+}
+
+// AdminUpdateKnife is the endpoint for modifying a knife
+func (s *Server) AdminUpdateKnife(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Parse the multipart form
+	err := r.ParseMultipartForm(32 << 20) // 32 MB maximum file size
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	name := r.FormValue("name")
+	author := r.FormValue("author")
+	rarity := r.FormValue("rarity")
+	basename := ""
+
+	if r.Form.Has("image") {
+		// Get the file from the request
+		file, handler, err := r.FormFile("image")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+
+		// Check the file type and size
+		if !strings.HasPrefix(handler.Header.Get("Content-Type"), "image/") {
+			http.Error(w, "File is not an image", http.StatusBadRequest)
+			return
+		}
+		if handler.Size > 32<<20 {
+			http.Error(w, "File is too large", http.StatusBadRequest)
+			return
+		}
+
+		basename := path.Base(handler.Filename)
+		if s.minioClient != nil {
+			_, err = s.minioClient.PutObject(ctx, s.bucketName, path.Join("images", basename), file, handler.Size, minio.PutObjectOptions{
+				ContentType: handler.Header.Get("Content-Type"),
+			})
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Error uploading image %s", err), http.StatusBadRequest)
+				return
+			}
+		}
+	}
+
+	user, err := s.db.GetUserByUsername(ctx, author)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Unknown user %s", author), http.StatusBadRequest)
+		return
+	}
+
+	// Save Knife finally to db
+	k, err := s.db.UpdateKnifeType(ctx, &db.KnifeType{
+		Name:      name,
+		AuthorID:  user.ID,
+		Rarity:    rarity,
+		ImageName: basename,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect to adminKnifePage for new knife
+	http.Redirect(w, r, s.baseURL+"/admin/knife/"+strconv.Itoa(k.ID), http.StatusTemporaryRedirect)
+}
+
+func (s *Server) AdminDeleteKnife(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	vars := mux.Vars(r)
+
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		servererr(w, err, http.StatusBadRequest)
+		return
+	}
+
+	err = s.db.DeleteKnifeType(ctx, &db.KnifeType{
+		ID: id,
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error deleting %d: %s", id, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+// AdminCreateKnife is the endpoint for creating a new new knife
 func (s *Server) AdminCreateKnife(w http.ResponseWriter, r *http.Request) {
-	servererr(w, fmt.Errorf("NOT IMPLEMENTED"), http.StatusInternalServerError)
+	ctx := r.Context()
+
+	// Parse the multipart form
+	err := r.ParseMultipartForm(32 << 20) // 32 MB maximum file size
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	name := r.FormValue("name")
+	author := r.FormValue("author")
+	rarity := r.FormValue("rarity")
+
+	// Get the file from the request
+	file, handler, err := r.FormFile("image")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Check the file type and size
+	if !strings.HasPrefix(handler.Header.Get("Content-Type"), "image/") {
+		http.Error(w, "File is not an image", http.StatusBadRequest)
+		return
+	}
+	if handler.Size > 32<<20 {
+		http.Error(w, "File is too large", http.StatusBadRequest)
+		return
+	}
+
+	user, err := s.db.GetUserByUsername(ctx, author)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Unknown user %s", author), http.StatusBadRequest)
+		return
+	}
+
+	basename := path.Base(handler.Filename)
+	if s.minioClient != nil {
+		_, err = s.minioClient.PutObject(ctx, s.bucketName, path.Join("images", basename), file, handler.Size, minio.PutObjectOptions{
+			ContentType: handler.Header.Get("Content-Type"),
+		})
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error uploading image %s", err), http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Save Knife finally to db
+	k, err := s.db.CreateKnifeType(ctx, &db.KnifeType{
+		Name:      name,
+		AuthorID:  user.ID,
+		Rarity:    rarity,
+		ImageName: basename,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect to adminKnifePage for new knife
+	http.Redirect(w, r, s.baseURL+"/admin/knife/"+strconv.Itoa(k.ID), http.StatusTemporaryRedirect)
 }
 
 func (s *Server) OnlyAdmin(inner http.HandlerFunc) http.HandlerFunc {
@@ -479,6 +730,16 @@ func (s *Server) OnlyAdmin(inner http.HandlerFunc) http.HandlerFunc {
 		// Read the cookie for the user
 		// Check if user is Admin
 		// Then call inner otherwise 403
+		user, err := s.getUserForRequest(r.Context(), r)
+		if err != nil {
+			servererr(w, err, http.StatusForbidden)
+			return
+		}
+
+		if !user.Admin {
+			servererr(w, fmt.Errorf("you, %s, are not authorized", user.Name), http.StatusForbidden)
+			return
+		}
 
 		inner(w, r)
 	}
