@@ -19,6 +19,7 @@ type Knife struct {
 	Subscriber bool
 	Edition    string
 	ObtainedAt time.Time
+	Deleted    bool
 }
 
 type KnifeType struct {
@@ -28,6 +29,7 @@ type KnifeType struct {
 	AuthorID  int
 	Rarity    string
 	ImageName string
+	Deleted   bool
 }
 
 type User struct {
@@ -69,8 +71,8 @@ type KnifeDB interface {
 	CreateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeType, error)
 	CreateEdition(ctx context.Context, edition *Edition) (*Edition, error)
 
-	GetCollection(ctx context.Context) ([]*KnifeType, error)
-	GetKnifeType(ctx context.Context, id int) (*KnifeType, error)
+	GetCollection(ctx context.Context, getDeleted bool) ([]*KnifeType, error)
+	GetKnifeType(ctx context.Context, id int, getDeleted bool) (*KnifeType, error)
 
 	UpdateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeType, error)
 	DeleteKnifeType(ctx context.Context, knife *KnifeType) error

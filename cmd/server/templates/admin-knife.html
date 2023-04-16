@@ -41,6 +41,11 @@
           <input type="file" id="image" name="image" accept="image/*" required>
         </div>
 
+        {{if .Deleted}}
+        <div>Deleted:</div>
+        <div>This knife has been marked deleted</div>
+        {{end}}
+
         <div class="controls">
           <input class="submit" type="button" onclick="handleUpdate()" value="Update"/>
           <input class="delete" type="button" onclick="handleDelete()" value="Delete Knife" />

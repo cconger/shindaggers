@@ -341,11 +341,25 @@ a {
   margin-top: 5px;
 }
 
+.card .deleted {
+  width: 38px;
+  height: 38px;
+  border: solid 3px red;
+  color: red;
+  font-size: 24px;
+  border-radius: 5px;
+}
+
+.card .deleted:before {
+  content: '⚠️';
+}
+
 .card .subscribed {
   width: 38px;
   height: 38px;
   background: url('https://images.shindaggers.io/images/sub.png') no-repeat;
 }
+
 
 .card .verified {
   width: 38px;
@@ -443,7 +457,7 @@ a {
 
 .admin-page .knives {
   display: grid;
-  grid-template-columns: auto auto auto auto auto;
+  grid-template-columns: auto auto auto auto auto auto;
 }
 
 .admin-page .knives .header {

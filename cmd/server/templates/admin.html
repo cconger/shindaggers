@@ -48,12 +48,14 @@
         <div class="header">Author</div>
         <div class="header">Rarity</div>
         <div class="header">Image</div>
+        <div class="header">Active</div>
         {{ range .Knives }}
           <div><a href="/admin/knife/{{.ID}}">{{.ID}}</a></div>
           <div>{{.Name}}</div>
           <div>{{.Author}}</div>
           <div>{{.Rarity}}</div>
           <div><a href="https://images.shindaggers.io/images/{{.ImageName}}">{{.ImageName}}</a></div>
+          <div>{{if .Deleted}}❌{{else}}✅{{end}}</div>
         {{end}}
       </section>
     </div>

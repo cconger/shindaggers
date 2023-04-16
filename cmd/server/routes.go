@@ -327,7 +327,7 @@ func (s *Server) UserHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) AdminIndex(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	knives, err := s.db.GetCollection(ctx)
+	knives, err := s.db.GetCollection(ctx, true)
 	if err != nil {
 		servererr(w, err, http.StatusInternalServerError)
 		return
@@ -482,7 +482,7 @@ func (s *Server) PullHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) CatalogHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	knives, err := s.db.GetCollection(ctx)
+	knives, err := s.db.GetCollection(ctx, false)
 	if err != nil {
 		servererr(w, err, http.StatusInternalServerError)
 		return
@@ -518,7 +518,7 @@ func (s *Server) CatalogView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	knife, err := s.db.GetKnifeType(ctx, id)
+	knife, err := s.db.GetKnifeType(ctx, id, false)
 	if err != nil {
 		servererr(w, err, http.StatusInternalServerError)
 		return
@@ -551,7 +551,7 @@ func (s *Server) AdminKnife(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	knife, err := s.db.GetKnifeType(ctx, id)
+	knife, err := s.db.GetKnifeType(ctx, id, true)
 	if err != nil {
 		servererr(w, err, http.StatusInternalServerError)
 		return

@@ -57,13 +57,15 @@ SELECT
   knife_ownership.was_subscriber,
   knife_ownership.is_verified,
   editions.name,
-  knife_ownership.transacted_at
+  knife_ownership.transacted_at,
+  knives.deleted
 FROM knife_ownership
 INNER JOIN knives ON knife_ownership.knife_id = knives.id
 LEFT JOIN users owner ON knife_ownership.user_id = owner.id
 LEFT JOIN users author ON knives.author_id = author.id
 JOIN editions ON knife_ownership.edition_id = editions.id
 WHERE owner.id != 166
+AND knives.deleted = false
 ORDER BY knife_ownership.transacted_at DESC
 LIMIT 15;
 `
@@ -99,6 +101,7 @@ func (sd *SDDB) GetLatestPulls(ctx context.Context) ([]*Knife, error) {
 			&knife.Verified,
 			&knife.Edition,
 			&obtainedAt,
+			&knife.Deleted,
 		)
 		if err != nil {
 			return nil, err
@@ -129,7 +132,8 @@ SELECT
   knife_ownership.was_subscriber,
   knife_ownership.is_verified,
   editions.name,
-  knife_ownership.transacted_at
+  knife_ownership.transacted_at,
+  knives.deleted
 FROM knife_ownership
 JOIN knives ON knife_ownership.knife_id = knives.id
 LEFT JOIN users owner ON knife_ownership.user_id = owner.id
@@ -171,6 +175,7 @@ func (sd *SDDB) GetKnife(ctx context.Context, knifeID int) (*Knife, error) {
 		&knife.Verified,
 		&knife.Edition,
 		&obtainedAt,
+		&knife.Deleted,
 	)
 	if err != nil {
 		return nil, err
@@ -198,13 +203,15 @@ SELECT
   knife_ownership.was_subscriber,
   knife_ownership.is_verified,
   editions.name,
-  knife_ownership.transacted_at
+  knife_ownership.transacted_at,
+  knives.deleted
 FROM knife_ownership
 JOIN knives ON knife_ownership.knife_id = knives.id
 LEFT JOIN users owner ON knife_ownership.user_id = owner.id
 LEFT JOIN users author ON knives.author_id = author.id
 JOIN editions ON knife_ownership.edition_id = editions.id
 WHERE owner.lookup_name = ?
+AND knives.deleted = false
 ORDER BY knife_ownership.transacted_at DESC;
 `
 
@@ -240,6 +247,7 @@ func (sd *SDDB) GetKnivesForUsername(ctx context.Context, username string) ([]*K
 			&knife.Verified,
 			&knife.Edition,
 			&obtainedAt,
+			&knife.Deleted,
 		)
 		if err != nil {
 			return nil, err
@@ -434,7 +442,7 @@ func (sd *SDDB) CreateUser(ctx context.Context, user *User) (*User, error) {
 }
 
 var (
-	getKnifeByName       = `SELECT id FROM knives WHERE name = ?;`
+	getKnifeByName       = `SELECT id FROM knives WHERE name = ? AND deleted = false;`
 	createKnifePullQuery = `INSERT INTO knife_ownership (user_id, knife_id, trans_type, was_subscriber, is_verified, edition_id) VALUES (?, ?, ?, ?, ?, ?);`
 )
 
@@ -449,6 +457,7 @@ func (sd *SDDB) PullKnife(ctx context.Context, userID int, knifename string, sub
 	if err != nil {
 		return nil, ErrNotFound
 	}
+	defer rows.Close()
 
 	if !rows.Next() {
 		return nil, ErrNotFound
@@ -566,14 +575,21 @@ SELECT
   author.twitch_name,
   author.id,
   knives.rarity,
-  knives.image_name
+  knives.image_name,
+  knives.deleted
 FROM knives
 LEFT JOIN users author ON knives.author_id = author.id
+%s
 ORDER BY knives.id ASC;
 `
 
-func (sd *SDDB) GetCollection(ctx context.Context) ([]*KnifeType, error) {
-	q, err := sd.db.PrepareContext(ctx, getCatalogQuery)
+func (sd *SDDB) GetCollection(ctx context.Context, getDeleted bool) ([]*KnifeType, error) {
+	optionalWhere := "WHERE knives.deleted = false"
+	if getDeleted {
+		optionalWhere = ""
+	}
+
+	q, err := sd.db.PrepareContext(ctx, fmt.Sprintf(getCatalogQuery, optionalWhere))
 	if err != nil {
 		return nil, err
 	}
@@ -594,6 +610,7 @@ func (sd *SDDB) GetCollection(ctx context.Context) ([]*KnifeType, error) {
 			&k.AuthorID,
 			&k.Rarity,
 			&k.ImageName,
+			&k.Deleted,
 		)
 		if err != nil {
 			log.Printf("Error: scan GetCollection: %s", err)
@@ -613,15 +630,22 @@ SELECT
   author.twitch_name,
   author.id,
   knives.rarity,
-  knives.image_name
+  knives.image_name,
+  knives.deleted
 FROM knives
 LEFT JOIN users author ON knives.author_id = author.id
 WHERE knives.id = ?
+%s
 LIMIT 1;
 `
 
-func (sd *SDDB) GetKnifeType(ctx context.Context, id int) (*KnifeType, error) {
-	q, err := sd.db.PrepareContext(ctx, getKnifeTypeQuery)
+func (sd *SDDB) GetKnifeType(ctx context.Context, id int, getDeleted bool) (*KnifeType, error) {
+	optionalWhere := "AND knives.deleted = false"
+	if getDeleted {
+		optionalWhere = ""
+	}
+
+	q, err := sd.db.PrepareContext(ctx, fmt.Sprintf(getKnifeTypeQuery, optionalWhere))
 	if err != nil {
 		return nil, err
 	}
@@ -644,6 +668,7 @@ func (sd *SDDB) GetKnifeType(ctx context.Context, id int) (*KnifeType, error) {
 		&k.AuthorID,
 		&k.Rarity,
 		&k.ImageName,
+		&k.Deleted,
 	)
 	if err != nil {
 		log.Printf("Error: scan GetCollection: %s", err)
@@ -673,7 +698,7 @@ func (sd *SDDB) CreateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeTy
 		return nil, err
 	}
 
-	return sd.GetKnifeType(ctx, int(id))
+	return sd.GetKnifeType(ctx, int(id), true)
 }
 
 var createEditionQuery = `
@@ -790,7 +815,7 @@ func (sd *SDDB) GetEditions(ctx context.Context) ([]*Edition, error) {
 }
 
 var deleteKnifeByID = `
-DELETE FROM knives WHERE id = ?;
+UPDATE knives SET deleted = true WHERE id = ?;
 `
 
 func (sd *SDDB) DeleteKnifeType(ctx context.Context, knife *KnifeType) error {
