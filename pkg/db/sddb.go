@@ -415,13 +415,11 @@ func (sd *SDDB) GetUserByUsername(ctx context.Context, username string) (*User, 
 
 var createUserQuery = `INSERT INTO users (twitch_name, lookup_name, twitch_id) VALUES (?, ?, ?);`
 
+var createUserByNameQuery = `INSERT INTO users (twitch_name, lookup_name) VALUES (?, ?);`
+
 func (sd *SDDB) CreateUser(ctx context.Context, user *User) (*User, error) {
 	if user == nil {
 		return nil, fmt.Errorf("user cannot be nil")
-	}
-	query, err := sd.db.Prepare(createUserQuery)
-	if err != nil {
-		return nil, err
 	}
 
 	if user.Name == "" {
@@ -433,7 +431,23 @@ func (sd *SDDB) CreateUser(ctx context.Context, user *User) (*User, error) {
 		lookupName = strings.ToLower(user.Name)
 	}
 
-	_, err = query.ExecContext(ctx, user.Name, lookupName, user.TwitchID)
+	var query *sql.Stmt
+	var err error
+	if user.TwitchID != "" {
+		query, err = sd.db.Prepare(createUserQuery)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = query.ExecContext(ctx, user.Name, lookupName, user.TwitchID)
+	} else {
+		query, err = sd.db.Prepare(createUserByNameQuery)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = query.ExecContext(ctx, user.Name, lookupName)
+	}
 	if err != nil {
 		return nil, err
 	}

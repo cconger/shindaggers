@@ -694,8 +694,14 @@ func (s *Server) AdminCreateKnife(w http.ResponseWriter, r *http.Request) {
 
 	user, err := s.db.GetUserByUsername(ctx, author)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Unknown user %s", author), http.StatusBadRequest)
-		return
+		user, err = s.db.CreateUser(ctx, &db.User{
+			Name: author,
+		})
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Could not create user %s", author), http.StatusBadRequest)
+			return
+		}
+
 	}
 
 	basename := path.Base(handler.Filename)
