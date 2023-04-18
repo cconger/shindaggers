@@ -175,7 +175,7 @@ func (s *Server) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, s.baseURL+"/user/"+user.LookupName, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, s.baseURL+"/user/"+user.LookupName, http.StatusFound)
 }
 
 func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
@@ -186,7 +186,7 @@ func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	if errored {
 		desc := params.Get("error_description")
 		log.Printf("OAUTH Error: %s", desc)
-		http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, s.baseURL, http.StatusFound)
 		return
 	}
 
@@ -194,7 +194,7 @@ func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	code := params.Get("code")
 	if code == "" {
 		log.Printf("code is empty")
-		http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, s.baseURL, http.StatusFound)
 		return
 	}
 
@@ -205,7 +205,7 @@ func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		log.Printf("error getting oauthtoken: %s", err)
-		http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, s.baseURL, http.StatusFound)
 		return
 	}
 
@@ -215,7 +215,7 @@ func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	twitchUser, err := s.twitchClient.GetUser(ctx, t.AccessToken)
 	if err != nil {
 		log.Printf("error getting twitch user %s", err)
-		http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, s.baseURL, http.StatusFound)
 		return
 	}
 
@@ -230,12 +230,12 @@ func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
 			})
 			if err != nil {
 				log.Printf("error creating user %s", err)
-				http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+				http.Redirect(w, r, s.baseURL, http.StatusFound)
 				return
 			}
 		} else {
 			log.Printf("error getting user %s", err)
-			http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+			http.Redirect(w, r, s.baseURL, http.StatusFound)
 			return
 		}
 	}
@@ -243,7 +243,7 @@ func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	token, err := createAuthToken()
 	if err != nil {
 		log.Printf("error creating auth token: %s", err)
-		http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, s.baseURL, http.StatusFound)
 		return
 	}
 
@@ -260,7 +260,7 @@ func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		log.Printf("error saving auth token: %s", err)
-		http.Redirect(w, r, s.baseURL, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, s.baseURL, http.StatusFound)
 		return
 	}
 
@@ -280,7 +280,7 @@ func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
 		w,
 		r,
 		fmt.Sprintf("%s/user/%s", s.baseURL, user.LookupName),
-		http.StatusTemporaryRedirect,
+		http.StatusFound,
 	)
 }
 
@@ -634,7 +634,7 @@ func (s *Server) AdminUpdateKnife(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Redirect to adminKnifePage for new knife
-	http.Redirect(w, r, s.baseURL+"/admin/knife/"+strconv.Itoa(k.ID), http.StatusTemporaryRedirect)
+	http.Redirect(w, r, s.baseURL+"/admin/knife/"+strconv.Itoa(k.ID), http.StatusFound)
 }
 
 func (s *Server) AdminDeleteKnife(w http.ResponseWriter, r *http.Request) {
@@ -722,7 +722,7 @@ func (s *Server) AdminCreateKnife(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Redirect to adminKnifePage for new knife
-	http.Redirect(w, r, s.baseURL+"/admin/knife/"+strconv.Itoa(k.ID), http.StatusTemporaryRedirect)
+	http.Redirect(w, r, s.baseURL+"/admin/knife/"+strconv.Itoa(k.ID), http.StatusFound)
 }
 
 func (s *Server) OnlyAdmin(inner http.HandlerFunc) http.HandlerFunc {
