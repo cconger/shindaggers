@@ -452,11 +452,13 @@ func (s *Server) PullHandler(w http.ResponseWriter, r *http.Request) {
 	verified := reqBody.Verified == "1" || strings.ToLower(reqBody.Verified) == "true"
 
 	edition := 1
-	edition, err = strconv.Atoi(reqBody.Edition)
-	if err != nil {
-		log.Printf("got edition %s and could not parse to number", reqBody.Edition)
-		servererr(w, fmt.Errorf("unprocessable edition %s: %w", reqBody.Edition, err), http.StatusBadRequest)
-		return
+	if reqBody.Edition != "" {
+		edition, err = strconv.Atoi(reqBody.Edition)
+		if err != nil {
+			log.Printf("got edition %s and could not parse to number", reqBody.Edition)
+			servererr(w, fmt.Errorf("unprocessable edition %s: %w", reqBody.Edition, err), http.StatusBadRequest)
+			return
+		}
 	}
 
 	k, err := s.db.PullKnife(ctx, user.ID, reqBody.Knifename, subscriber, verified, edition)
