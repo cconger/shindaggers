@@ -18,6 +18,7 @@ const timeLayout = "2006-01-02 15:04:05"
 type pull struct {
 	time          time.Time
 	username      string
+	userid        string
 	knife         string
 	creator       string
 	rarity        string
@@ -67,14 +68,14 @@ func importBladechain(path string, offset int) {
 		}
 		// Create a pull from the fields
 		p := pull{
-			time:          t,
-			username:      fields[1],
-			knife:         fields[2],
-			creator:       fields[3],
-			rarity:        fields[4],
-			verified:      mustBool(fields[5]),
-			subscriber:    mustBool(fields[6]),
-			first_edition: mustBool(fields[7]),
+			time:       t,
+			username:   fields[1],
+			userid:     fields[2],
+			knife:      fields[3],
+			creator:    fields[4],
+			rarity:     fields[5],
+			verified:   mustBool(fields[6]),
+			subscriber: mustBool(fields[7]),
 		}
 
 		// Append the pull to the slice of pulls
