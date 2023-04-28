@@ -42,6 +42,14 @@ CREATE TABLE IF NOT EXISTS user_auth (
 CREATE INDEX idx_user_auth_token ON user_auth(token);
 
 
+CREATE TABLE IF NOT EXISTS communities (
+  id BIGINT PRIMARY KEY,
+  name VARCHAR(100),
+  owner_id BIGINT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 /* Users allowed to manage communities
 community_admin
   user_id      bigint
@@ -135,7 +143,7 @@ CREATE TABLE IF NOT EXISTS ownership (
 /*
 transactions
   id             bigint
-  collectable_id bigint
+  instance_id    bigint
   from_id        bigint
   to_id          bigint
   method         enum
@@ -143,13 +151,24 @@ transactions
 
 CREATE TABLE IF NOT EXISTS transactions (
   id BIGINT PRIMARY KEY,
-  collectabe_id BIGINT,
+  instance_id BIGINT,
   from_user_id BIGINT,
   to_user_id BIGINT,
   method enum('pull', 'gift', 'trade'),
+  lore TEXT,
   execution_time TIMESTAMP
 );
 
+/* TODO add ability to have TBDC */
+
+CREATE TABLE IF NOT EXISTS webhook (
+  id BIGINT PRIMARY KEY,
+  hook_token VARCHAR(64),
+  user_id BIGINT,
+  community_id BIGINT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  disabled BOOLEAN
+);
 
 
 /*
