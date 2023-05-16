@@ -525,10 +525,18 @@ func (s *Server) CatalogView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	payload := struct {
-		*db.KnifeType
+		db.Knife
 		RarityClass string
 	}{
-		knife,
+		db.Knife{
+			ID:        knife.ID,
+			Name:      knife.Name,
+			Author:    knife.Author,
+			AuthorID:  knife.AuthorID,
+			Rarity:    knife.Rarity,
+			ImageName: knife.ImageName,
+			Deleted:   knife.Deleted,
+		},
 		className(knife.Rarity),
 	}
 

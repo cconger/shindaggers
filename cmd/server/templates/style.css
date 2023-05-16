@@ -6,11 +6,15 @@ html {
 }
 
 body.split {
-  font-family: Oswald, sans-serif;
+  font-family: Montserrat, sans-serif;
   display: grid;
   grid-template-rows: 100%;
   grid-template-columns: minmax(auto, 1000px) minmax(400px, auto);
   margin: 0;
+}
+
+h1, h2, h3 {
+  text-transform: uppercase;
 }
 
 body.inset {
@@ -23,7 +27,7 @@ section.intro {
 }
 
 section.intro h1 {
-  font-size: 74px;
+  font-size: 60px;
 }
 
 section.intro p {
@@ -37,7 +41,7 @@ section.pulls {
   color: white;
 }
 
-@media screen and (max-width: 800px) {
+@media screen and (max-width: 940px) {
   body.split {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;
@@ -53,7 +57,7 @@ section.pulls {
 }
 
 body {
-  font-family: Oswald, sans-serif;
+  font-family: Montserrat, sans-serif;
 }
 
 body.grad {
@@ -61,42 +65,179 @@ body.grad {
 }
 
 .card {
-  width: 500px;
-  display: grid;
-  grid-template-columns: 500px;
-  grid-template-rows: 500px 200px 160px;
-  border: solid 10px rgb(20,20,40);
-  border-radius: 20px;
-  overflow: hidden;
+  position: relative;
+  width: 480px;
+  height: 700px;
   background: #f5f5f5;
   box-shadow: 10px 10px 30px rgba(0,0,0,0.9);
-  font-family: Oswald, sans-serif;
   text-align: center;
   cursor: pointer;
   margin: 60px auto;
   transform-style: preserve-3d;
   perspective: 1000px;
   font-size: 30px;
+  color: white;
+  padding: 15px;
+}
+
+.card .border-top {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+}
+
+.card .border-bottom {
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+}
+
+.card .card-label {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 180px;
+  font-size: 24px;
+  font-weight: 800;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.card .card-label .edition {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.325em;
 }
 
 .card.rarity-common {
-  background: radial-gradient(at 50% 10%, #ffffff 0%, #f5f5f5 100%);
+  background: #26B800;
+}
+
+.card.rarity-common .border {
+  stroke: #175108;
 }
 
 .card.rarity-uncommon {
-  background: radial-gradient(at 50% 10%, #1eff00 0%, #f5f5f5 100%);
+  background: #005E66;
+}
+
+.card.rarity-uncommon .border {
+  stroke: #00393E;
 }
 
 .card.rarity-rare {
-  background: radial-gradient(at 50% 10%, #0070dd 0%, #f5f5f5 100%);
+  background: #510165;
+}
+
+.card.rarity-rare .border {
+  stroke: #290033;
 }
 
 .card.rarity-super-rare {
-  background: radial-gradient(at 50% 10%, #a335ee 0%, #f5f5f5 100%);
+  background: #CCCB00;
+}
+
+.card.rarity-super-rare .border {
+  stroke: #8A8900;
 }
 
 .card.rarity-ultra-rare {
-  background: radial-gradient(at 50% 10%, #ff8000 0%, #f5f5f5 100%);
+  background: #A60000;
+}
+
+.card.rarity-ultra-rare .border {
+  stroke: #5D1414;
+}
+
+.card .micro-title {
+  text-transform: uppercase;
+  font-size: 24px;
+  font-weight: 800;
+
+  text-align: left;
+  padding-top: 100px;
+}
+
+.card .macro-title {
+  position: relative;
+  font-size: 100px;
+  font-weight: 800;
+  text-transform: uppercase;
+  text-align: justify;
+  text-align-last: justify;
+  text-justify: inter-character;
+  word-break: break-word;
+}
+
+.card .macro-title > div {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.card .macro-title canvas {
+  width: 100%;
+  height: 500px;
+}
+
+.card-attribution {
+  position: absolute;
+  text-align: left;
+  bottom: 10px;
+  left: 10px;
+
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.card-attribution .label {
+  font-weight: 400;
+  font-size: 16px;
+}
+
+.card .card-image {
+  transform: translateZ(60px) translateY(50px);
+  position: relative;
+}
+
+.card .card-image img {
+  width: 100%;
+}
+
+.card .badges {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+}
+
+.card .badges > div {
+  margin-top: 5px;
+}
+
+.card .deleted {
+  width: 38px;
+  height: 38px;
+  border: solid 3px red;
+  color: red;
+  font-size: 24px;
+  border-radius: 5px;
+}
+
+.card .deleted:before {
+  content: '⚠️';
+}
+
+.card .subscribed {
+  width: 38px;
+  height: 38px;
+  background: url('https://images.shindaggers.io/images/sub.png') no-repeat;
+}
+
+
+.card .verified {
+  width: 38px;
+  height: 39px;
+  background: url('https://images.shindaggers.io/images/verified.png') no-repeat;
 }
 
 .collection {
@@ -147,23 +288,23 @@ body.grad {
 }
 
 .collection-knife.rarity-common {
-  background: radial-gradient(at 50% 10%, #ffffff 0%, #f5f5f5 100%);
+  background: #26B800;
 }
 
 .collection-knife.rarity-uncommon {
-  background: radial-gradient(at 50% 10%, #1eff00 0%, #f5f5f5 100%);
+  background: #005E66;
 }
 
 .collection-knife.rarity-rare {
-  background: radial-gradient(at 50% 10%, #0070dd 0%, #f5f5f5 100%);
+  background: #510165;
 }
 
 .collection-knife.rarity-super-rare {
-  background: radial-gradient(at 50% 10%, #a335ee 0%, #f5f5f5 100%);
+  background: #CCCB00;
 }
 
 .collection-knife.rarity-ultra-rare {
-  background: radial-gradient(at 50% 10%, #ff8000 0%, #f5f5f5 100%);
+  background: #A60000;
 }
 
 .collection-knife .image {
@@ -194,27 +335,12 @@ body.grad {
   background-size: 19px;
 }
 
-.card-title {
-  font-size: 50px;
-  border-top: solid thin black;
-}
-
-.card-attribution {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: 1fr;
-}
-
-.card-image img {
-  height: 100%;
-}
 
 .info-card {
   width: 500px;
   display: grid;
   grid-template-colums: 500px;
   grid-template-rows: 60px 120px 60px 120px;
-  border-radius: 20px;
   background: white;
   overflow: hidden;
   background: #f5f5f5;
@@ -252,17 +378,34 @@ a {
   font-size: 16px;
 }
 
+.pulls h2 {
+  margin: 0;
+}
+
 .pulls-list {
   display: grid;
 }
 
 .pull {
   display: grid;
-  grid-template-columns: 50px 1fr 3fr;
+  grid-template-columns: 60px 1fr 3fr;
   grid-gap: 10px;
-  font-size: 1.2em;
-  margin: 20px 0;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 12px 0;
   align-items: center;
+  min-height: 60px;
+}
+
+.pull .image {
+  position: relative;
+}
+
+.pull .image img {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  height: 80px;
 }
 
 .pulls-list a {
@@ -270,9 +413,8 @@ a {
   color: inherit;
 }
 
-.pull .image img {
-  width: 100%;
-  height: 100%;
+.pull .name {
+  text-transform: uppercase;
 }
 
 .pull .info {
@@ -284,89 +426,101 @@ a {
 }
 
 .pull.rarity-common {
-  background: radial-gradient(at 0% 50%, rgba(255,255,255,0.5) 0%, rgba(0,0,0,0) 66%);
+  background: linear-gradient(90deg, #26B800 64.5%, rgba(0, 94, 102, 0) 95.51%);
 }
 
 .pull.rarity-common:hover {
-  background: radial-gradient(at 20% 50%, rgba(255,255,255,0.5) 0%, rgba(0,0,0,0) 66%);
+  background: linear-gradient(90deg, #26B800 64.5%, rgba(0, 94, 102, 0) 95.51%);
 }
 
 .pull.rarity-uncommon {
-  background: radial-gradient(at 0% 50%, rgba(30,255,0, 0.5) 0%, rgba(0,0,0,0) 66%);
+  background: linear-gradient(90deg, #005E66 64.5%, rgba(0, 94, 102, 0) 95.51%);
 }
 
 .pull.rarity-uncommon:hover {
-  background: radial-gradient(at 20% 50%, rgba(30,255,0, 0.5) 0%, rgba(0,0,0,0) 66%);
+  background: linear-gradient(90deg, #005E66 64.5%, rgba(0, 94, 102, 0) 95.51%);
 }
 
 .pull.rarity-rare {
-  background: radial-gradient(at 0% 50%, rgba(0,112,221, 0.5) 0%, rgba(0,0,0,0) 66%);
+  background: linear-gradient(90deg, #510165 64.5%, rgba(0, 94, 102, 0) 95.51%);
 }
 
 .pull.rarity-rare:hover {
-  background: radial-gradient(at 20% 50%, rgba(0,112,221, 0.5) 0%, rgba(0,0,0,0) 66%);
+  background: linear-gradient(90deg, #510165 64.5%, rgba(0, 94, 102, 0) 95.51%);
 }
 
 .pull.rarity-super-rare {
-  background: radial-gradient(at 0% 50%, rgba(163,53,238, 0.5) 0%, rgba(0,0,0,0) 66%);
+  background: linear-gradient(90deg, #CCCB00 64.5%, rgba(0, 94, 102, 0) 95.51%);
 }
 
 .pull.rarity-super-rare:hover {
-  background: radial-gradient(at 20% 50%, rgba(163,53,238, 0.5) 0%, rgba(0,0,0,0) 66%);
+  background: linear-gradient(90deg, #CCCB00 64.5%, rgba(0, 94, 102, 0) 95.51%);
 }
 
 .pull.rarity-ultra-rare {
-  background: radial-gradient(at 0% 50%, rgba(255,128,0, 0.5) 0%, rgba(0,0,0,0) 66%);
+  background: linear-gradient(90deg, #A60000 64.5%, rgba(0, 94, 102, 0) 95.51%);
 }
 
 .pull.rarity-ultra-rare:hover {
-  background: radial-gradient(at 20% 50%, rgba(255,128,0, 0.5) 0%, rgba(0,0,0,0) 66%);
+  background: linear-gradient(90deg, #A60000 64.5%, rgba(0, 94, 102, 0) 95.51%);
 }
 
 .label {
   font-size: 16px;
 }
 
-.card .card-image {
-  position: relative;
+
+.input-control {
+  display: grid;
+  grid-template-columns: 250px 100px;
 }
 
-.card .badges {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
+.input-control .input {
+  height: 43px;
+  font-size: 16px;
+  line-height: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin: 0;
 }
 
-.card .badges > div {
-  margin-top: 5px;
-}
-
-.card .deleted {
-  width: 38px;
-  height: 38px;
-  border: solid 3px red;
-  color: red;
-  font-size: 24px;
-  border-radius: 5px;
-}
-
-.card .deleted:before {
-  content: '⚠️';
-}
-
-.card .subscribed {
-  width: 38px;
-  height: 38px;
-  background: url('https://images.shindaggers.io/images/sub.png') no-repeat;
+.input-control .button {
+  margin: 0;
+  background: #F39643;
+  width: 100px;
+  height: 47px;
+  line-height: 47px;
 }
 
 
-.card .verified {
-  width: 38px;
-  height: 39px;
-  background: url('https://images.shindaggers.io/images/verified.png') no-repeat;
+.button {
+  text-transform: uppercase;
+  background: #90D3C3;
+  color: white;
+  cursor: pointer;
+  height: 58px;
+  width: 250px;
+  text-align: center;
+  line-height: 58px;
 }
 
+.button a {
+  text-decoration: none;
+  color: white;
+  font-weight: 700;
+}
+
+
+#user-lookup {
+  width: 228px;
+  padding: 0 10px;
+}
+
+#lookup > div {
+  margin: 20px 0;
+  text-transform: uppercase;
+  font-weight: 700;
+}
 
 </style>
 
@@ -464,6 +618,7 @@ a {
   color: #010101;
   font-weight: bold;
 }
+
 
 </style>
 {{end}}

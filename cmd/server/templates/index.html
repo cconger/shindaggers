@@ -10,22 +10,37 @@
     <section class="intro">
       <h1>Shindaggers</h1>
       <p>
-        Finally a place for you to gaze upon your collection of hard earned <a href="https://twitch.tv/shindigs">Shindigs</a> Brand Knives.
+        Gaze upon your collection of hard earned <a href="https://twitch.tv/shindigs">Shindigs</a> Brand Knives.
       </p>
+
+      <div class="button">
+        <a href="/catalog">
+          View the Collection
+        </a>
+      </div>
+
+
 
       <div>
         Browse the <a href="/catalog">full collection</a>
       </div>
 
-      <div>
-        <h3>See your collection:</h3>
-        <div>
-          <label>Lookup Your Username: <input id="user-lookup" placeholder="shindigs"></label>
-          <button id="user-lookup-button">Lookup</button>
+      <div id="lookup">
+        <h3>Look up your collection:</h3>
+        <div class="input-control">
+          <input class="input" id="user-lookup" placeholder="username">
+          <div id="user-lookup-button" class="button button-input">Search</div>
         </div>
+
         <div>Or</div>
-        <div><a href="{{.LoginURL}}">Login With Twitch</a></div>
-        <div style="font-size: 12px;">(Uses cookies)</div>
+
+        <div class="button">
+          <a href="{{.LoginURL}}">
+            Login With Twitch
+          </a>
+        </div>
+
+        <div style="font-size: 12px;margin:0;">Design by Tigrlilly</div>
       </div>
 
     </section>
@@ -38,9 +53,9 @@
             <div class="image">
               <img src="https://images.shindaggers.io/images/{{.ImageName}}"/>
             </div>
-            <div>{{.Name}}</div>
+            <div class="name">{{.Name}}</div>
             <div class="info">
-              <div>Pulled by {{.Owner}}</div>
+              <div>PULLED BY {{.Owner}}</div>
               <div class="time" title="{{.AbsTime}}">{{.TimeAgo}}</div>
             </div>
           </div>
@@ -53,12 +68,18 @@
       lookupInput.addEventListener("keypress", function(event) {
         if(event.key === 'Enter') {
           let username = event.target.value;
+          if (username.length == 0) {
+            return false;
+          }
           window.location.href = "/user/" + username;
         }
       });
 
       document.getElementById('user-lookup-button').addEventListener("click", function(event) {
         let username = lookupInput.value;
+        if (username.length == 0) {
+          return false;
+        }
         window.location.href = "/user/" + username;
       });
     </script>
