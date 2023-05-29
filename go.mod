@@ -3,6 +3,7 @@ module github.com/cconger/shindaggers
 go 1.20
 
 require (
+	github.com/go-faker/faker/v4 v4.1.0
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/gorilla/mux v1.8.0
 	github.com/minio/minio-go/v7 v7.0.52

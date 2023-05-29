@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -26,6 +27,21 @@ import (
 )
 
 const AUTH_COOKIE = "auth"
+
+type twitchClient interface {
+	OAuthGetToken(context.Context, string, string) (*twitch.GetTokenResponse, error)
+	GetUser(context.Context, string) (*twitch.TwitchUser, error)
+}
+
+type blobClient interface {
+	PutObject(context.Context, string, string, io.Reader, int64, minio.PutObjectOptions) (minio.UploadInfo, error)
+}
+
+type mockBlobClient struct{}
+
+func (m *mockBlobClient) PutObject(ctx context.Context, bucket string, file string, contents io.Reader, size int64, options minio.PutObjectOptions) (minio.UploadInfo, error) {
+	return minio.UploadInfo{}, fmt.Errorf("cannot upload files in dev mode")
+}
 
 type KnifePage struct {
 	db.Knife
@@ -75,9 +91,9 @@ type Server struct {
 	db             db.KnifeDB
 	webhookSecret  string
 	twitchClientID string
-	twitchClient   *twitch.Client
+	twitchClient   twitchClient
 	baseURL        string
-	minioClient    *minio.Client
+	minioClient    blobClient
 	bucketName     string
 
 	template *template.Template
