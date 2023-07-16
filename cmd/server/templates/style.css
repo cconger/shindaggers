@@ -243,10 +243,107 @@ body.grad {
 .collection {
   display: grid;
   justify-content: center;
-  grid-gap: 40px;
+  grid-gap: 60px;
   grid-template-columns: repeat(auto-fill, 200px);
   margin: 0 40px;
   margin-bottom: 30px;
+}
+
+.mini-card {
+  position: relative;
+  width: 200px;
+  height: 290px;
+  background: #f5f5f5;
+  box-shadow: 10px 10px 30px rgba(0,0,0,0.9);
+  text-align: center;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  font-size: 30px;
+  padding: 15px;
+}
+
+.mini-card .border-top {
+  position: absolute;
+  top: -5px;
+  left: -4px;
+}
+
+.mini-card .border-bottom {
+  position: absolute;
+  bottom: -5px;
+  right: -4px;
+}
+
+.mini-card.rarity-common {
+  background: #26B800;
+}
+
+.mini-card.rarity-common .border {
+  stroke: #175108;
+}
+
+.mini-card.rarity-uncommon {
+  background: #005E66;
+}
+
+.mini-card.rarity-uncommon .border {
+  stroke: #00393E;
+}
+
+.mini-card.rarity-rare {
+  background: #510165;
+}
+
+.mini-card.rarity-rare .border {
+  stroke: #290033;
+}
+
+.mini-card.rarity-super-rare {
+  background: #CCCB00;
+}
+
+.mini-card.rarity-super-rare .border {
+  stroke: #8A8900;
+}
+
+.mini-card.rarity-ultra-rare {
+  background: #A60000;
+}
+
+.mini-card.rarity-ultra-rare .border {
+  stroke: #5D1414;
+}
+
+.mini-card .micro-title {
+  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 800;
+
+  text-align: left;
+  color: white;
+  padding-top: 20px;
+  height: 20px;
+}
+
+.mini-card .macro-title {
+  position: absolute;
+}
+
+.mini-card .macro-title canvas {
+  width: 100%;
+  height: 250px;
+}
+
+.mini-card .card-image img {
+  width: 100%;
+}
+
+.mini-card .card-image {
+  transform: translateZ(60px) translateY(50px);
+  position: relative;
+  height: 200px;
+  overflow: hidden;
 }
 
 .collection .collection-knife {

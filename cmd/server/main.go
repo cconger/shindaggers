@@ -97,6 +97,10 @@ func main() {
 	r.HandleFunc("/oauth/redirect", s.OAuthHandler)
 	r.HandleFunc("/pull/{token}", s.PullHandler).Methods(http.MethodPost)
 
+	r.HandleFunc("/api/catalog", s.getCollection).Methods(http.MethodGet)
+	r.HandleFunc("/api/collectable/{id:[0-9]+}", s.getCollectable).Methods(http.MethodGet)
+	r.HandleFunc("/api/issued/{id:[0-9]+}", s.getIssuedCollectable).Methods(http.MethodGet)
+
 	r.HandleFunc("/admin", s.OnlyAdmin(s.AdminIndex))
 	r.HandleFunc("/admin/knife", s.OnlyAdmin(s.AdminKnifeList)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/knife", s.OnlyAdmin(s.AdminCreateKnife)).Methods(http.MethodPost)

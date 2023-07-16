@@ -10,13 +10,112 @@
     <div class="collection">
       {{range .Knives}}
         <a href="/catalog/{{.ID}}">
-          <div class="collection-knife {{.RarityClass}}">
-              <img src="https://images.shindaggers.io/images/{{.ImageName}}"/>
-              <div class="name">{{.Name}}</div>
-              <div class="author">{{.Author}}</div>
+
+          <div class="mini-card {{.RarityClass}}">
+            <svg class="border border-top" width="130" height="80" viewBox="0 0 272 159" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M136 9H9V159" stroke-width="17" />
+              <path d="M160 9H221" stroke-width="17" />
+              <path d="M241 9H272" stroke-width="17" />
+            </svg>
+
+            <div class="micro-title">
+              {{.Name}}
+            </div>
+
+            <div class="macro-title">
+              {{.Name}}
+            </div>
+
+            <div class="card-image">
+              <img src="https://images.shindaggers.io/images/{{.ImageName}}" />
+            </div>
+
+            <svg class="border border-bottom" width="130" height="80" viewBox="0 0 263 156" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M127 147L254 147L254 1.50204e-05" stroke-width="17" />
+              <path d="M110 147H49" stroke-width="17" />
+              <path d="M31 147H9.53674e-07" stroke-width="17" />
+            </svg>
           </div>
         </a>
       {{end}}
     </div>
+
+    <script type="text/javascript">
+      // Canvas code to get around no inter-character justification of text
+      var dpr = window.devicePixelRatio || 1; 
+      const canvasHeight = 250;
+      const canvasWidth = 200;
+      const lineHeight = 50;
+      function SplitText(node) {
+        var text = node.nodeValue.replace(/^\s*|\s(?=\s)|\s*$/g, "");
+        let words = text.split(' ');
+        let canvas = document.createElement("canvas");
+        canvas.width = canvasWidth * dpr;
+        canvas.height = canvasHeight * dpr;
+        let context = canvas.getContext('2d');
+        context.font = '800 30px Montserrat';
+        context.fillStyle = 'white';
+        context.scale(dpr, dpr);
+
+        node.parentNode.insertBefore(canvas, node);
+
+        let word = words.shift();
+        let lines = [];
+        while(word) {
+          word = word.toUpperCase();
+          let metrics = context.measureText(word);
+
+          if (word.length > 3 && metrics.width > 200) {
+            // split and try again
+            let mid = word.length / 2;
+            words.unshift(word.slice(0,mid), word.slice(mid));
+          } else {
+            lines.push([word, metrics.width]);
+          }
+
+          word = words.shift();
+        }
+
+
+        // Start from top
+        let cursorY = lineHeight;
+
+        for (let [line, width] of lines) {
+          let letters = line.split('');
+          let cursorX = 0;
+          let delta = (canvasWidth - width) / (line.length - 1);
+          for (let i = 0; i < letters.length; i++) {
+            let metrics = context.measureText(letters[i]);
+            context.fillText(letters[i], cursorX, cursorY);
+            cursorX += metrics.width + delta;
+          }
+          cursorY += lineHeight;
+        }
+
+        node.parentNode.removeChild(node);
+      }
+
+      (() => {
+        // Disable for browsers that don't support auto justify
+        if (CSS.supports("text-justify: inter-character")) {
+          return false;
+        }
+
+        var TEXT_NODE = 3;
+        let elems = document.querySelectorAll(".macro-title");
+        elems.forEach((elem) => {
+          elem = elem.firstChild;
+
+          while (elem) {
+            var nextElem = elem.nextSibling;
+
+            if (elem.nodeType == TEXT_NODE)
+              SplitText(elem);
+
+            elem = nextElem;
+          }
+        });
+      })()
+    </script>
   </body>
 </html>
