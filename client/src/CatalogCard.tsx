@@ -5,7 +5,7 @@ import type { Collectable } from './resources';
 import { Card } from './Card';
 
 const fetchCollectable = async (id: string): Promise<Collectable> => {
-  let response = await fetch("http://localhost:8080/api/collectable/" + id)
+  let response = await fetch("/api/collectable/" + id)
   if (response.status === 404) {
     throw new Error("Collectable does not exist")
   }
