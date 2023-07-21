@@ -23,9 +23,9 @@ const fetchUser = async (token: string | null): Promise<User | null> => {
     },
   });
   if (response.status === 403) {
-    // Invalid token
-    useAuthManager().logout();
-    return null;
+    // Your token is no good...
+    useAuthManager().setToken(null);
+    return null
   }
   if (response.status !== 200) {
     throw new Error("unexpected status code " + response.statusText);
@@ -42,7 +42,7 @@ class AuthManager {
   constructor() {
     const rawToken = localStorage.getItem(lsKey);
     [this.token, this.setToken] = createSignal(rawToken);
-    [this.user] = createResource(() => this.token(), fetchUser);
+    [this.user] = createResource(() => this.token() || "", fetchUser);
 
     createEffect(() => {
       let t = this.token();
@@ -52,10 +52,6 @@ class AuthManager {
         localStorage.setItem(lsKey, t);
       }
     });
-  }
-
-  logout() {
-    this.setToken(null);
   }
 }
 
@@ -75,14 +71,12 @@ export const NavLogin: Component = (props) => {
       <Match when={am.user.loading}>
         <a href="#">-</a>
       </Match>
-      <Match when={am.user.error}>
-        <a href="/oauth/login">Login</a>
-      </Match>
       <Match when={am.user() === null}>
         <a href="/oauth/login">Login</a>
       </Match>
       <Match when={am.user()}>
         <A href={`/user/${am.user()!.id}`}>{am.user()!.name}</A>
+        <a onClick={() => am.setToken(null)}>Logout</a>
       </Match>
     </Switch>
   )
