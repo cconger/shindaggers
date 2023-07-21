@@ -17,6 +17,10 @@ The page will reload if you make edits.<br>
 
 You need to have the go server running locally at http://localhost:8080 for data to load
 
+OR you can run against prod by setting the env var: `export SHINDAGGERS_UPSTREAM=https://shindaggers.io`
+
+This will use the production API so you do not need to have your own server running
+
 ### `npm run build`
 
 Builds the app for production to the `dist` folder.<br>
