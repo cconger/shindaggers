@@ -61,7 +61,7 @@ export const Card: Component<CardProps> = (props) => {
           <div class="verified" title="Verified Issue"></div>
         </Show>
         <Show when={issuedCollectable?.subscriber}>
-          <div class="verified" title="Subscriber Issue"></div>
+          <div class="subscribed" title="Subscriber Issue"></div>
         </Show>
       </div>
 
