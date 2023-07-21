@@ -33,15 +33,19 @@ If you want to use real data, you unfortuantely need several secrets for the twi
 
 If you just want to work on the presentation you can run the webapp in standalone mode see [client/README.md](./client/README.md)
 
+## Stuff in progress
 
-### Warning
+ - [x] Rethink templating pretty completely (move to js front end)
+ - [ ] Fix embedding, titles and metadata returned by server
+ - [ ] Server side pulling
+   - [ ] Animations for pull in webapp
+ - [ ] Live "Latest"
+ - [ ] Admin Pages Moved to JS App
+ - [ ] Allow logged in subscribers to upload knives direct to site pending approval
+ - [ ] Allow logged in users to "equip" a knife
 
-This code is not the best.  What I like about it is that I do most things manually.  
+###  Exploration Ideas
 
-Things I want to improve if there is any traction:
- - Rethink templating pretty completely
- - Move admininstration to a javascript webapp
+ - [ ] Generate lore for knife issuance on pull (chatgpt4?)
+ - [ ] Allow users to trade knives?
 
- - Live frontpage
- - Be able to pull serverside
-   - Show animations
