@@ -22,6 +22,11 @@ const fetchUser = async (token: string | null): Promise<User | null> => {
       'Authorization': token,
     },
   });
+  if (response.status === 403) {
+    // Invalid token
+    useAuthManager().logout();
+    return null;
+  }
   if (response.status !== 200) {
     throw new Error("unexpected status code " + response.statusText);
   }
@@ -34,16 +39,23 @@ class AuthManager {
   token: Accessor<string | null>;
   setToken: Setter<string | null>;
 
-  fr: HTMLIFrameElement | undefined;
-
   constructor() {
     const rawToken = localStorage.getItem(lsKey);
     [this.token, this.setToken] = createSignal(rawToken);
     [this.user] = createResource(() => this.token(), fetchUser);
 
     createEffect(() => {
-      localStorage.setItem(lsKey, this.token() || "");
-    })
+      let t = this.token();
+      if (t === null) {
+        localStorage.removeItem(lsKey);
+      } else {
+        localStorage.setItem(lsKey, t);
+      }
+    });
+  }
+
+  logout() {
+    this.setToken(null);
   }
 }
 
@@ -62,6 +74,9 @@ export const NavLogin: Component = (props) => {
     <Switch>
       <Match when={am.user.loading}>
         <a href="#">-</a>
+      </Match>
+      <Match when={am.user.error}>
+        <a href="/oauth/login">Login</a>
       </Match>
       <Match when={am.user() === null}>
         <a href="/oauth/login">Login</a>
