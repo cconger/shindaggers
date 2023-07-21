@@ -1,0 +1,162 @@
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.button {
+  text-transform: uppercase;
+  background: #90D3C3;
+  color: white;
+  cursor: pointer;
+  height: 58px;
+  width: 250px;
+  text-align: center;
+  line-height: 58px;
+  font-weight: 700;
+}
+
+.split {
+  display: grid;
+  grid-template-rows: 100%;
+  grid-template-columns: minmax(auto, 1000px) minmax(400px, auto);
+  margin: 0;
+}
+
+@media screen and (max-width: 940px) {
+  .split {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+}
+
+section.intro {
+  margin: 0 40px;
+}
+
+section.intro h1 {
+  font-size: 60px;
+}
+
+section.intro p {
+  font-size: 24px;
+}
+
+section.intro p a {
+  text-decoration: underline;
+  transition: text-shadow 0.2s;
+}
+
+section.intro p a:hover {
+  text-decoration: underline;
+  text-shadow: rgba(0,0,0,0.3) 3px 3px 3px;
+}
+
+section.pulls {
+  background: rgb(20,20,40);
+  color: white;
+  padding: 1em;
+}
+
+.pulls h2 {
+  margin: 0;
+}
+
+.pulls a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.pull {
+  display: grid;
+  grid-template-columns: 60px 1fr 3fr;
+  grid-gap: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 12px 0;
+  align-items: center;
+  min-height: 60px;
+}
+
+.pull .image {
+  position: relative;
+}
+
+.pull .image img {
+  position: absolute;
+  top: -40px;
+  right: 80;
+  height: 80px;
+}
+
+.pull .name {
+  text-transform: uppercase;
+}
+
+.pull .info {
+  font-size: 18px;
+}
+
+.pull .time {
+  font-size: 14px;
+}
+
+.pull.common {
+  background: linear-gradient(90deg, #26B800 64.5%, rgba(0, 94, 102, 0) 95.51%);
+}
+
+.pull.common:hover {
+  background: linear-gradient(90deg, #26B800 64.5%, rgba(0, 94, 102, 0) 95.51%);
+}
+
+.pull.uncommon {
+  background: linear-gradient(90deg, #005E66 64.5%, rgba(0, 94, 102, 0) 95.51%);
+}
+
+.pull.uncommon:hover {
+  background: linear-gradient(90deg, #005E66 64.5%, rgba(0, 94, 102, 0) 95.51%);
+}
+
+.pull.rare {
+  background: linear-gradient(90deg, #510165 64.5%, rgba(0, 94, 102, 0) 95.51%);
+}
+
+.pull.rare:hover {
+  background: linear-gradient(90deg, #510165 64.5%, rgba(0, 94, 102, 0) 95.51%);
+}
+
+.pull.super-rare {
+  background: linear-gradient(90deg, #CCCB00 64.5%, rgba(0, 94, 102, 0) 95.51%);
+}
+
+.pull.super-rare:hover {
+  background: linear-gradient(90deg, #CCCB00 64.5%, rgba(0, 94, 102, 0) 95.51%);
+}
+
+.pull.ultra-rare {
+  background: linear-gradient(90deg, #A60000 64.5%, rgba(0, 94, 102, 0) 95.51%);
+}
+
+.pull.ultra-rare:hover {
+  background: linear-gradient(90deg, #A60000 64.5%, rgba(0, 94, 102, 0) 95.51%);
+}
+
+.input-button {
+  display: flex;
+}
+
+.input-button input {
+  height: 43px;
+  font-size: 16px;
+  line-height: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.input-button .button {
+  margin: 0;
+  background: #F39643;
+  width: 100px;
+  height: 49px;
+  line-height: 49px;
+}

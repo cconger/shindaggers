@@ -1,0 +1,23 @@
+.info-card {
+  width: 500px;
+  background: white;
+  overflow: hidden;
+  background: #f5f5f5;
+  color: #010101;
+  box-shadow: 10px 10px 30px rgba(0,0,0,0.9);
+  font-family: Oswald, sans-serif;
+  margin: 30px auto;
+  padding: 30px;
+  font-size: 26px;
+}
+
+.info-card-header {
+  margin: 0 1em;
+  font-weight: 700;
+}
+
+.info-card-body {
+  font-weight: 200;
+  margin: 0 2em;
+  line-height: 2em;
+}

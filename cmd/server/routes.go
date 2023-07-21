@@ -187,7 +187,7 @@ func (s *Server) Me(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, err := s.getUserForRequest(ctx, r)
 	if err != nil {
-		servererr(w, fmt.Errorf("Unable to determine who you are: %w", err), http.StatusBadRequest)
+		servererr(w, fmt.Errorf("unable to determine who you are: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -296,6 +296,134 @@ func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
 		w,
 		r,
 		fmt.Sprintf("%s/user/%s", s.baseURL, user.LookupName),
+		http.StatusFound,
+	)
+}
+
+func (s *Server) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	p := url.Values{
+		"response_type": []string{"code"},
+		"client_id":     []string{s.twitchClientID},
+		"redirect_uri":  []string{fmt.Sprintf("%s/oauth/handler", s.baseURL)},
+		"scope":         []string{""},
+	}
+
+	uri := "https://id.twitch.tv/oauth2/authorize?" + p.Encode()
+	http.Redirect(
+		w,
+		r,
+		uri,
+		http.StatusFound,
+	)
+}
+
+func (s *Server) LoginResponseHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	params := r.URL.Query()
+	errored := params.Has("error")
+	if errored {
+		desc := params.Get("error_description")
+		log.Printf("OAUTH Error: %s", desc)
+		http.Redirect(w, r, s.baseURL, http.StatusFound)
+		return
+	}
+
+	// Use code to get access token
+	code := params.Get("code")
+	if code == "" {
+		log.Printf("code is empty")
+		http.Redirect(w, r, s.baseURL, http.StatusFound)
+		return
+	}
+
+	t, err := s.twitchClient.OAuthGetToken(
+		ctx,
+		code,
+		fmt.Sprintf("%s/oauth/redirect", s.baseURL),
+	)
+	if err != nil {
+		log.Printf("error getting oauthtoken: %s", err)
+		http.Redirect(w, r, s.baseURL, http.StatusFound)
+		return
+	}
+
+	expiresAt := time.Now().Add(time.Duration(t.ExpiresIn) * time.Second)
+
+	// Get user from twitch
+	twitchUser, err := s.twitchClient.GetUser(ctx, t.AccessToken)
+	if err != nil {
+		log.Printf("error getting twitch user %s", err)
+		http.Redirect(w, r, s.baseURL, http.StatusFound)
+		return
+	}
+
+	// Get or create user in our db
+	user, err := s.db.GetUserByTwitchID(ctx, twitchUser.ID)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			user, err = s.db.CreateUser(ctx, &db.User{
+				Name:       twitchUser.DisplayName,
+				LookupName: twitchUser.Login,
+				TwitchID:   twitchUser.ID,
+			})
+			if err != nil {
+				log.Printf("error creating user %s", err)
+				http.Redirect(w, r, s.baseURL, http.StatusFound)
+				return
+			}
+		} else {
+			log.Printf("error getting user %s", err)
+			http.Redirect(w, r, s.baseURL, http.StatusFound)
+			return
+		}
+	}
+
+	token, err := createAuthToken()
+	if err != nil {
+		log.Printf("error creating auth token: %s", err)
+		http.Redirect(w, r, s.baseURL, http.StatusFound)
+		return
+	}
+
+	// Store access token and refresh token
+	_, err = s.db.SaveAuth(
+		ctx,
+		&db.UserAuth{
+			UserID:       user.ID,
+			Token:        token,
+			AccessToken:  t.AccessToken,
+			RefreshToken: t.RefreshToken,
+			ExpiresAt:    expiresAt,
+		},
+	)
+	if err != nil {
+		log.Printf("error saving auth token: %s", err)
+		http.Redirect(w, r, s.baseURL, http.StatusFound)
+		return
+	}
+
+	// Set user cookie
+	cookieEncoding := base64.RawStdEncoding.EncodeToString(token)
+	http.SetCookie(w, &http.Cookie{
+		Name:     AUTH_COOKIE,
+		Value:    cookieEncoding,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   !s.devMode,
+	})
+
+	encodedToken := base64.URLEncoding.EncodeToString(token)
+
+	baseURL := s.baseURL
+	if s.devMode {
+		baseURL = "http://localhost:3000"
+	}
+
+	http.Redirect(
+		w,
+		r,
+		baseURL+"/login#token="+encodedToken,
 		http.StatusFound,
 	)
 }

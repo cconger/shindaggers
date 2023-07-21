@@ -1,17 +1,22 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cconger/shindaggers/pkg/db"
 
 	"github.com/gorilla/mux"
 )
+
+var errUnimplmeneted = fmt.Errorf("unimplemented")
 
 type apierror struct {
 	StatusCode   int    `json:"status"`
@@ -202,6 +207,239 @@ func (s *Server) getCollectable(w http.ResponseWriter, r *http.Request) {
 			Collectable Collectable
 		}{
 			Collectable: CollectableFromDBKnifeType(dbknife),
+		},
+	)
+}
+
+func (s *Server) getLatest(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// TODO: Query Param `since` for limiting time
+
+	dbk, err := s.db.GetLatestPulls(ctx)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "Internal Error")
+		return
+	}
+
+	ic := make([]IssuedCollectable, len(dbk))
+
+	for i, k := range dbk {
+		ic[i] = IssuedCollectableFromDBKnife(k)
+	}
+
+	serveAPIPayload(
+		w,
+		&struct {
+			Collectables []IssuedCollectable
+		}{
+			Collectables: ic,
+		},
+	)
+}
+
+func (s *Server) getLoggedInUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	rawToken := r.Header.Get("Authorization")
+	t, err := base64.URLEncoding.DecodeString(rawToken)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "Authorization token unreadable")
+		return
+	}
+
+	auth, err := s.db.GetAuth(ctx, t)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "Invalid Token")
+		return
+	}
+
+	u, err := s.db.GetUserByID(ctx, auth.UserID)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "Could not get user for token")
+		return
+	}
+
+	serveAPIPayload(
+		w,
+		&struct {
+			User User
+		}{
+			User: User{
+				ID:   strconv.Itoa(u.ID),
+				Name: u.Name,
+			},
+		},
+	)
+}
+
+func (s *Server) getUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	vars := mux.Vars(r)
+
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "Could not parse user id")
+		return
+	}
+
+	u, err := s.db.GetUserByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			serveAPIErr(w, err, http.StatusNotFound, "Unknown user")
+			return
+		}
+		serveAPIErr(w, err, http.StatusInternalServerError, "")
+		return
+	}
+
+	serveAPIPayload(
+		w,
+		&struct {
+			User User
+		}{
+			User: User{
+				ID:   strconv.Itoa(u.ID),
+				Name: u.Name,
+			},
+		},
+	)
+}
+
+func (s *Server) getUserByName(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	vars := mux.Vars(r)
+
+	name := strings.ToLower(vars["name"])
+
+	u, err := s.db.GetUserByUsername(ctx, name)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			serveAPIErr(w, err, http.StatusNotFound, "Unknown user")
+			return
+		}
+		serveAPIErr(w, err, http.StatusInternalServerError, "")
+		return
+	}
+
+	serveAPIPayload(
+		w,
+		&struct {
+			User User
+		}{
+			User: User{
+				ID:   strconv.Itoa(u.ID),
+				Name: u.Name,
+			},
+		},
+	)
+}
+
+func (s *Server) getUserCollectionByName(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	vars := mux.Vars(r)
+
+	name, ok := vars["name"]
+
+	if !ok {
+		serveAPIErr(w, fmt.Errorf("id required"), http.StatusBadRequest, "User ID Required")
+		return
+	}
+
+	// TODO: Check if userid is all numbers
+	// If try to load it as an ID then twitchID
+	// If not fallback to name
+
+	userRes, err := s.db.GetUserByUsername(ctx, strings.ToLower(name))
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			serveAPIErr(w, err, http.StatusNotFound, "Unknown user")
+			return
+		}
+		serveAPIErr(w, err, http.StatusInternalServerError, "")
+		return
+	}
+
+	issuedRaw, err := s.db.GetKnivesForUsername(ctx, strings.ToLower(name))
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			serveAPIErr(w, err, http.StatusNotFound, "Unknown user")
+			return
+		}
+		serveAPIErr(w, err, http.StatusInternalServerError, "")
+		return
+	}
+
+	issuedCollectables := make([]IssuedCollectable, len(issuedRaw))
+	for i, raw := range issuedRaw {
+		issuedCollectables[i] = IssuedCollectableFromDBKnife(raw)
+	}
+
+	serveAPIPayload(
+		w,
+		&struct {
+			User         User
+			Collectables []IssuedCollectable
+		}{
+			User: User{
+				ID:   strconv.Itoa(userRes.ID),
+				Name: userRes.Name,
+			},
+			Collectables: issuedCollectables,
+		},
+	)
+}
+
+func (s *Server) getUserCollectionByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	vars := mux.Vars(r)
+
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		serveAPIErr(w, fmt.Errorf("id required"), http.StatusBadRequest, "User ID Required")
+		return
+	}
+
+	userRes, err := s.db.GetUserByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			serveAPIErr(w, err, http.StatusNotFound, "Unknown user")
+			return
+		}
+		serveAPIErr(w, err, http.StatusInternalServerError, "")
+		return
+	}
+
+	issuedRaw, err := s.db.GetKnivesForUsername(ctx, userRes.LookupName)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			serveAPIErr(w, err, http.StatusNotFound, "Unknown user")
+			return
+		}
+		serveAPIErr(w, err, http.StatusInternalServerError, "")
+		return
+	}
+
+	issuedCollectables := make([]IssuedCollectable, len(issuedRaw))
+	for i, raw := range issuedRaw {
+		issuedCollectables[i] = IssuedCollectableFromDBKnife(raw)
+	}
+
+	serveAPIPayload(
+		w,
+		&struct {
+			User         User
+			Collectables []IssuedCollectable
+		}{
+			User: User{
+				ID:   strconv.Itoa(userRes.ID),
+				Name: userRes.Name,
+			},
+			Collectables: issuedCollectables,
 		},
 	)
 }

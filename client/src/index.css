@@ -1,0 +1,59 @@
+html {
+  min-height: 100%;
+}
+
+body {
+  font-family: Montserrat, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: rgb(240, 240, 255);
+}
+
+h1, h2, h3 {
+  text-transform: uppercase;
+}
+
+.title {
+  font-size: 80px;
+  color: #fefefe;
+}
+
+.header {
+  color: #fefefe;
+  margin: 0 1em;
+}
+
+nav.masternav {
+  height: 2em;
+  border-bottom: solid thin black;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  font-size: 26px;
+  text-transform: uppercase;
+  padding: 0 1em;
+}
+
+nav.masternav a {
+  margin-top: 0.3em;
+  margin-left: 2em;
+  color: rgb(20,20,20);
+  transition: text-shadow 0.2s;
+}
+
+nav.masternav a.active {
+  font-weight: bold;
+}
+
+nav.masternav a:hover {
+  color: rgb(0,0,0);
+  text-shadow: rgba(0,0,0,0.3) 3px 3px 3px;
+}
+
+nav.masternav nav {
+  display: flex;
+}
+
+nav.pages a:first-child {
+  margin-left: 0;
+}

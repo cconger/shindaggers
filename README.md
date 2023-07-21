@@ -11,9 +11,9 @@ using channel points on their stream.
 
 ## Developing
 
-To get the web application to run using mock data you can run
+To get the API running you can run
 ```
-go run ./cmd/server -dev -nodb
+go run ./cmd/server -nodb
 ```
 
 This will start the server in a special mode that uses a mock db and the templates will be reloaded every
@@ -29,12 +29,19 @@ If you want to use real data, you unfortuantely need several secrets for the twi
 `DSN`
 
 
+## Web application
+
+If you just want to work on the presentation you can run the webapp in standalone mode see [client/README.md](./client/README.md)
+
+
 ### Warning
 
 This code is not the best.  What I like about it is that I do most things manually.  
 
 Things I want to improve if there is any traction:
  - Rethink templating pretty completely
- - Caching of responses both on server and with Cache Control headers
- - Transactions on dbs
+ - Move admininstration to a javascript webapp
 
+ - Live frontpage
+ - Be able to pull serverside
+   - Show animations

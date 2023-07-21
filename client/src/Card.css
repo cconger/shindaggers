@@ -1,0 +1,157 @@
+.card {
+  position: relative;
+  width: 480px;
+  height: 700px;
+  background: #f5f5f5;
+  box-shadow: 10px 10px 30px rgba(0,0,0,0.9);
+  text-align: center;
+  cursor: pointer;
+  margin: 60px auto;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  font-size: 30px;
+  color: white;
+  padding: 15px;
+}
+
+.card .border-top {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+}
+
+.card .border-bottom {
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+}
+
+.card .card-label {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 180px;
+  font-size: 24px;
+  font-weight: 800;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.card .card-label .edition {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.325em;
+}
+
+.card.common {
+  background: #26B800;
+}
+
+.card.common .border {
+  stroke: #175108;
+}
+
+.card.uncommon {
+  background: #005E66;
+}
+
+.card.uncommon .border {
+  stroke: #00393E;
+}
+
+.card.rare {
+  background: #510165;
+}
+
+.card.rare .border {
+  stroke: #290033;
+}
+
+.card.super-rare {
+  background: #CCCB00;
+}
+
+.card.super-rare .border {
+  stroke: #8A8900;
+}
+
+.card.ultra-rare {
+  background: #A60000;
+}
+
+.card.ultra-rare .border {
+  stroke: #5D1414;
+}
+
+.card .micro-title {
+  text-transform: uppercase;
+  font-size: 24px;
+  font-weight: 800;
+
+  text-align: left;
+  padding-top: 100px;
+}
+
+.card .macro-title {
+  position: absolute;
+}
+
+.card-attribution {
+  position: absolute;
+  text-align: left;
+  bottom: 10px;
+  left: 10px;
+
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.card-attribution .label {
+  font-weight: 400;
+  font-size: 16px;
+}
+
+.card .card-image {
+  transform: translateZ(60px) translateY(50px);
+  position: relative;
+}
+
+.card .card-image img {
+  width: 100%;
+}
+
+.card .badges {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+}
+
+.card .badges > div {
+  margin-top: 5px;
+}
+
+.card .deleted {
+  width: 38px;
+  height: 38px;
+  border: solid 3px red;
+  color: red;
+  font-size: 24px;
+  border-radius: 5px;
+}
+
+.card .deleted:before {
+  content: '⚠️';
+}
+
+.card .subscribed {
+  width: 38px;
+  height: 38px;
+  background: url('https://images.shindaggers.io/images/sub.png') no-repeat;
+}
+
+
+.card .verified {
+  width: 38px;
+  height: 39px;
+  background: url('https://images.shindaggers.io/images/verified.png') no-repeat;
+}

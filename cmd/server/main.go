@@ -86,20 +86,32 @@ func main() {
 	}
 
 	r := mux.NewRouter()
-	r.HandleFunc("/", s.IndexHandler)
-	r.HandleFunc("/me", s.Me)
-	r.HandleFunc("/user/{id}", s.UserHandler)
-	r.HandleFunc("/knife/{id:[0-9]+}", s.KnifeHandler)
 
-	r.HandleFunc("/catalog/{id:[0-9]+}", s.CatalogView)
-	r.HandleFunc("/catalog", s.CatalogHandler)
-
-	r.HandleFunc("/oauth/redirect", s.OAuthHandler)
-	r.HandleFunc("/pull/{token}", s.PullHandler).Methods(http.MethodPost)
+	r.HandleFunc("/oauth/login", s.LoginHandler).Methods(http.MethodGet)
+	r.HandleFunc("/oauth/handler", s.LoginResponseHandler).Methods(http.MethodGet)
 
 	r.HandleFunc("/api/catalog", s.getCollection).Methods(http.MethodGet)
 	r.HandleFunc("/api/collectable/{id:[0-9]+}", s.getCollectable).Methods(http.MethodGet)
 	r.HandleFunc("/api/issued/{id:[0-9]+}", s.getIssuedCollectable).Methods(http.MethodGet)
+
+	r.HandleFunc("/api/latest", s.getLatest).Methods(http.MethodGet)
+	r.HandleFunc("/api/user/me", s.getLoggedInUser).Methods(http.MethodGet)
+	r.HandleFunc("/api/user/{id:[0-9]+}", s.getUser).Methods(http.MethodGet)
+	r.HandleFunc("/api/user/{name}", s.getUserByName).Methods(http.MethodGet)
+	r.HandleFunc("/api/user/{id:[0-9]+}/collection", s.getUserCollectionByID).Methods(http.MethodGet)
+	r.HandleFunc("/api/user/{name}/collection", s.getUserCollectionByName).Methods(http.MethodGet)
+	r.HandleFunc("/api/pull/{token}", s.PullHandler).Methods(http.MethodPost)
+
+	// ADMIN APIs
+	// Create Collectable
+	// Modify Collectable
+	// Delete Collectable
+
+	// Random Issue to User
+	// Issue Specific IssuedCollectable
+	// Revoke IssuedCollectable
+
+	// AuthorizeChannel // For setting the channel that we check for sub to
 
 	r.HandleFunc("/admin", s.OnlyAdmin(s.AdminIndex))
 	r.HandleFunc("/admin/knife", s.OnlyAdmin(s.AdminKnifeList)).Methods(http.MethodGet)
@@ -107,6 +119,9 @@ func main() {
 	r.HandleFunc("/admin/knife/{id:[0-9]+}", s.OnlyAdmin(s.AdminKnife)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/knife/{id:[0-9]+}", s.OnlyAdmin(s.AdminUpdateKnife)).Methods(http.MethodPut)
 	r.HandleFunc("/admin/knife/{id:[0-9]+}", s.OnlyAdmin(s.AdminDeleteKnife)).Methods(http.MethodDelete)
+
+	r.PathPrefix("/assets").HandlerFunc(s.assetHandler)
+	r.PathPrefix("/").HandlerFunc(s.spaHandler)
 
 	http.Handle("/", r)
 
