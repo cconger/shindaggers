@@ -853,3 +853,78 @@ func (sd *SDDB) DeleteKnifeType(ctx context.Context, knife *KnifeType) error {
 func (sd *SDDB) UpdateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeType, error) {
 	return nil, fmt.Errorf("NOT IMPLEMENTED")
 }
+
+func (sd *SDDB) EquipKnifeForUser(ctx context.Context, userID int, knifeID int) error {
+	return fmt.Errorf("NOT IMPLEMENTED")
+}
+
+var getEquippedKnifeQuery = `
+SELECT
+  knives.id,
+  knife_ownership.instance_id,
+  knives.name,
+  author.twitch_name,
+  author.id,
+  owner.twitch_name,
+  owner.id,
+  knives.rarity,
+  knives.image_name,
+  knife_ownership.was_subscriber,
+  knife_ownership.is_verified,
+  editions.name,
+  knife_ownership.transacted_at,
+  knives.deleted
+FROM knife_ownership
+JOIN knives ON knife_ownership.knife_id = knives.id
+LEFT JOIN users owner ON knife_ownership.user_id = owner.id
+LEFT JOIN users author ON knives.author_id = author.id
+JOIN editions ON knife_ownership.edition_id = editions.id
+WHERE knife_ownership.instance_id = (SELECT instance_id FROM equipped WHERE user_id = ?);
+`
+
+func (sd *SDDB) GetEquippedKnifeForUser(ctx context.Context, userID int) (*Knife, error) {
+	q, err := sd.db.PrepareContext(ctx, getEquippedKnifeQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := q.QueryContext(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil, nil
+	}
+
+	var obtainedAt string
+
+	var knife Knife
+	err = rows.Scan(
+		&knife.ID,
+		&knife.InstanceID,
+		&knife.Name,
+		&knife.Author,
+		&knife.AuthorID,
+		&knife.Owner,
+		&knife.OwnerID,
+		&knife.Rarity,
+		&knife.ImageName,
+		&knife.Subscriber,
+		&knife.Verified,
+		&knife.Edition,
+		&obtainedAt,
+		&knife.Deleted,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	knife.ObtainedAt, err = parseTimestamp(obtainedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &knife, nil
+}

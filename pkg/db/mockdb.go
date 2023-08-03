@@ -55,6 +55,16 @@ func (m *MockDB) GetUserByUsername(ctx context.Context, username string) (*User,
 	return res, nil
 }
 
+func (m *MockDB) GetEquippedKnifeForUser(ctx context.Context, userID int) (*Knife, error) {
+	res := &Knife{}
+	faker.FakeData(&res)
+	return res, nil
+}
+
+func (m *MockDB) EquipKnifeForUser(ctx context.Context, userID int, knifeID int) error {
+	return ErrNoWrites
+}
+
 func (m *MockDB) CreateUser(ctx context.Context, user *User) (*User, error) {
 	return nil, ErrNoWrites
 }

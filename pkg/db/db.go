@@ -65,6 +65,9 @@ type KnifeDB interface {
 	GetUserByTwitchID(ctx context.Context, id string) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
 
+	EquipKnifeForUser(ctx context.Context, userID int, KnifeID int) error
+	GetEquippedKnifeForUser(ctx context.Context, id int) (*Knife, error)
+
 	CreateUser(ctx context.Context, user *User) (*User, error)
 
 	PullKnife(ctx context.Context, userID int, knifename string, subscriber bool, verified bool, edition_id int) (*Knife, error)

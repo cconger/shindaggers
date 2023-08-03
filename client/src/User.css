@@ -1,0 +1,19 @@
+.catalog-header {
+  margin: 0 1em;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2em;
+  flex-direction: row;
+}
+
+
+@media screen and (max-width: 840px) {
+  .catalog-header {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .catalog-equipped {
+    margin-bottom: 2em;
+  }
+}

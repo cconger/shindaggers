@@ -30,10 +30,6 @@ const timeAgo = (dstr: string): string => {
   if (delta < (1000 * 60)) {
     return "Just now";
   }
-  if (delta < (1000 * 60 * 60)) {
-    let minutes = delta / 1000 * 60;
-    return rtfl.format(-minutes, 'minute');
-  }
 
   if (delta < (1000 * 60 * 60)) {
     let minutes = Math.round(delta / (1000 * 60));

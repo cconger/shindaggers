@@ -23,7 +23,7 @@ export type IssuedCollectable = Collectable & {
 
 export enum Rarity {
   Common = 'Common',
-  Uncomomn = 'Uncommon',
+  Uncommon = 'Uncommon',
   Rare = 'Rare',
   SuperRare = 'Super Rare',
   UltraRare = 'Ultra Rare',
@@ -31,4 +31,17 @@ export enum Rarity {
 
 export const rarityclass = (r: Rarity): string => {
   return r.toString().toLowerCase().replaceAll(' ', '-')
+};
+
+
+const colorMap = {
+  [Rarity.Common]: "rgba(38, 184, 0, 0.5)",
+  [Rarity.Uncommon]: "rgba(0, 94, 102, 0.5)",
+  [Rarity.Rare]: "rgba(81, 1, 101, 0.5)",
+  [Rarity.SuperRare]: "rgba(204, 203, 0, 0.5)",
+  [Rarity.UltraRare]: "rgba(166, 0, 0, 0.5)",
+};
+
+export const rarityColor = (r: Rarity): string => {
+  return colorMap[r];
 };

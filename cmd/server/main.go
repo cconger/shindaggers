@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -17,6 +20,63 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
+
+type UserID struct {
+	TwitchID   string
+	InternalID int
+	Name       string
+}
+
+func (id *UserID) IsTwitch() bool {
+	return id.TwitchID != ""
+}
+
+func (id *UserID) IsInternal() bool {
+	return id.InternalID != 0
+}
+
+func (id *UserID) IsName() bool {
+	return id.Name != ""
+}
+
+func ParseUserID(str string) UserID {
+	if strings.HasPrefix(str, "twitch:") {
+		return UserID{
+			TwitchID: str[7:],
+		}
+	}
+
+	if regexp.MustCompile(`^\d+$`).MatchString(str) {
+		n, err := strconv.Atoi(str)
+		if err != nil {
+			log.Printf("Unable to parse a numeric id? what the hell")
+			return UserID{}
+		}
+		return UserID{
+			InternalID: n,
+		}
+	}
+
+	return UserID{
+		Name: str,
+	}
+}
+
+func (id *UserID) String() string {
+	if id.IsTwitch() {
+		return "twitch:" + id.TwitchID
+	}
+
+	if id.IsInternal() {
+		return strconv.Itoa(id.InternalID)
+	}
+
+	if id.IsName() {
+		return id.Name
+	}
+
+	return "UNKNOWN"
+}
 
 // Webserver for fronting the database.
 // Basic unauthed web_paths and a webhook to create a new pull
@@ -96,11 +156,16 @@ func main() {
 
 	r.HandleFunc("/api/latest", s.getLatest).Methods(http.MethodGet)
 	r.HandleFunc("/api/user/me", s.getLoggedInUser).Methods(http.MethodGet)
-	r.HandleFunc("/api/user/{id:[0-9]+}", s.getUser).Methods(http.MethodGet)
-	r.HandleFunc("/api/user/{name}", s.getUserByName).Methods(http.MethodGet)
-	r.HandleFunc("/api/user/{id:[0-9]+}/collection", s.getUserCollectionByID).Methods(http.MethodGet)
-	r.HandleFunc("/api/user/{name}/collection", s.getUserCollectionByName).Methods(http.MethodGet)
+
+	r.HandleFunc("/api/user/{userid}", s.getUser).Methods(http.MethodGet)
+	r.HandleFunc("/api/user/{userid}/equipped", s.getEquippedForUser).Methods(http.MethodGet)
+	r.HandleFunc("/api/user/{userid}/collection", s.getUserCollection).Methods(http.MethodGet)
+
+	// Legacy URL to be deleted
+	r.HandleFunc("/pull/{token}", s.PullHandler).Methods(http.MethodPost)
+
 	r.HandleFunc("/api/pull/{token}", s.PullHandler).Methods(http.MethodPost)
+	r.HandleFunc("/api/user/equip", s.EquipHandler).Methods(http.MethodPost)
 
 	// ADMIN APIs
 	// Create Collectable
