@@ -1,8 +1,9 @@
 import type { Component } from 'solid-js';
-import { createResource, Switch, Match } from 'solid-js';
+import { createResource, Show, Switch, Match } from 'solid-js';
 import { useParams, A } from '@solidjs/router';
 import { Card } from './Card';
 import type { IssuedCollectable } from './resources';
+import { useAuthManager } from './LoginButton';
 
 import './Pull.css';
 
@@ -32,6 +33,12 @@ export const Pull: Component<PullProps> = (props) => {
     return d.toLocaleString();
   }
 
+  const am = useAuthManager();
+
+  const equip = async () => {
+    console.log("EQUIP DIS BADBOI", collectable()?.instance_id);
+  };
+
   return (
     <Switch>
       <Match when={collectable.loading}>
@@ -43,6 +50,11 @@ export const Pull: Component<PullProps> = (props) => {
       <Match when={collectable()}>
         <Card collectable={collectable()!} issuedCollectable={collectable()!} />
         <section class="info-card">
+          <Show when={am.user() && am.user()!.id == collectable()!.owner.id}>
+            <div class="flex-mid">
+              <div class="button" onClick={equip}>Equip this knife</div>
+            </div>
+          </Show>
           <div>
             <div class="info-card-header">Owner</div>
             <div class="info-card-body">

@@ -243,12 +243,12 @@ func (s *Server) getAuth(ctx context.Context, r *http.Request) (*db.UserAuth, er
 	rawToken := r.Header.Get("Authorization")
 	t, err := base64.URLEncoding.DecodeString(rawToken)
 	if err != nil {
-		return nil, fmt.Errorf("Authorization token unreadable")
+		return nil, fmt.Errorf("authorization token unreadable")
 	}
 
 	auth, err := s.db.GetAuth(ctx, t)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid Token")
+		return nil, fmt.Errorf("invalid token")
 	}
 
 	return auth, nil
@@ -435,17 +435,82 @@ func (s *Server) getUserCollection(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
+type EquipPayload struct {
+	UserID   int
+	IssuedID int
+}
+
 func (s *Server) EquipHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	_, err := s.getAuth(ctx, r)
+	a, err := s.getAuth(ctx, r)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusForbidden, "Unable to identify authenticated user")
 		return
 	}
 
+	var payload EquipPayload
+	err = json.NewDecoder(r.Body).Decode(&payload)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "Could not parse body")
+		return
+	}
+
+	if payload.UserID == 0 {
+		serveAPIErr(w, fmt.Errorf("payload has zero value for UserID"), http.StatusBadRequest, "UserID must be specified")
+		return
+	}
+
+	if payload.IssuedID == 0 {
+		serveAPIErr(w, fmt.Errorf("payload has zero value for IssuedID"), http.StatusBadRequest, "InstanceID must be specified")
+		return
+	}
+
 	// Lookup user
+	user, err := s.db.GetUserByID(ctx, a.UserID)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			serveAPIErr(w, err, http.StatusNotFound, "Unknown user")
+			return
+		}
+		serveAPIErr(w, err, http.StatusInternalServerError, "")
+		return
+	}
+
+	if !user.Admin && (user.ID != payload.UserID) {
+		serveAPIErr(
+			w,
+			fmt.Errorf("non admin user (%d) tried to equip knife for someone else", user.ID),
+			http.StatusForbidden,
+			"You cannot equip knives for other users",
+		)
+		return
+	}
+
 	// Lookup if knife is owned by user
-	// Set Equipped if true
-	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not implemented")
+	issuedRaw, err := s.db.GetKnife(ctx, payload.IssuedID)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			serveAPIErr(w, err, http.StatusNotFound, "Unknown issued collectable")
+			return
+		}
+		serveAPIErr(w, err, http.StatusInternalServerError, "")
+		return
+	}
+
+	if issuedRaw.OwnerID != payload.UserID {
+		serveAPIErr(
+			w,
+			fmt.Errorf("user doesn't own collectable requested to equip"),
+			http.StatusBadRequest,
+			"Specified user does not own the collectable specified",
+		)
+		return
+	}
+
+	err = s.db.EquipKnifeForUser(ctx, payload.UserID, payload.IssuedID)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "")
+		return
+	}
 }

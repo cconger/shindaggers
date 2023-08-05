@@ -15,7 +15,7 @@ func main() {
 
 	switch cmd {
 	case "bladechain":
-		importBladechain("reference/bladechain5.txt", 1074)
+		importBladechain("reference/bladechain6.txt", 1074)
 	case "users":
 		err := importUsers()
 		if err != nil {

@@ -51,7 +51,6 @@ export const DistributionChart: Component<DistributionChartProps> = (props) => {
   onMount(() => {
     if (canvas === undefined) { return; }
 
-
     new Chart(canvas, {
       type: "polarArea",
       data: data,

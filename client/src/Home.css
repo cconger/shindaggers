@@ -13,6 +13,13 @@ a {
   text-align: center;
   line-height: 58px;
   font-weight: 700;
+  font-size: 16px;
+  display: inline-block;
+}
+
+.flex-mid {
+  display: flex;
+  justify-content: center;
 }
 
 .split {

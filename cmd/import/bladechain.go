@@ -105,8 +105,8 @@ func importBladechain(path string, offset int) {
 
 	insertPullQuery, err := db.Prepare(`
   INSERT INTO knife_ownership
-    (user_id, knife_id, trans_type, transacted_at, instance_id, was_subscriber, is_verified)
-  VALUES (?, ?, ?, ?, ?, ?, ?);`)
+    (user_id, knife_id, trans_type, transacted_at, was_subscriber, is_verified)
+  VALUES (?, ?, ?, ?, ?, ?);`)
 	if err != nil {
 		log.Fatalf("unable to prepare knife creation query: %s", err)
 	}
@@ -150,7 +150,7 @@ func importBladechain(path string, offset int) {
 			knife = id
 		}
 
-		res, err := insertPullQuery.Exec(user, knife, "pull", p.time, i+offset, p.subscriber, p.verified)
+		res, err := insertPullQuery.Exec(user, knife, "pull", p.time, p.subscriber, p.verified)
 		if err != nil {
 			log.Fatalf("unable to create pull: %s", err)
 		}

@@ -854,8 +854,25 @@ func (sd *SDDB) UpdateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeTy
 	return nil, fmt.Errorf("NOT IMPLEMENTED")
 }
 
+var equipKnifeQuery = `
+INSERT INTO equipped (user_id, instance_id) 
+VALUES (?, ?)
+ON DUPLICATE KEY UPDATE
+  user_id = ?, instance_id = ?;
+`
+
 func (sd *SDDB) EquipKnifeForUser(ctx context.Context, userID int, knifeID int) error {
-	return fmt.Errorf("NOT IMPLEMENTED")
+	q, err := sd.db.PrepareContext(ctx, equipKnifeQuery)
+	if err != nil {
+		return err
+	}
+
+	_, err = q.ExecContext(ctx, userID, knifeID, userID, knifeID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 var getEquippedKnifeQuery = `

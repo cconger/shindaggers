@@ -56,7 +56,7 @@ class AuthManager {
 }
 
 let am: AuthManager | undefined;
-const useAuthManager = () => {
+export const useAuthManager = () => {
   if (am === undefined) {
     am = new AuthManager();
   }
