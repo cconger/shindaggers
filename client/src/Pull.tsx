@@ -4,6 +4,7 @@ import { useParams, A } from '@solidjs/router';
 import { Card } from './Card';
 import type { IssuedCollectable } from './resources';
 import { useAuthManager } from './LoginButton';
+import { Button } from './Button';
 
 import './Pull.css';
 
@@ -21,6 +22,23 @@ const fetchIssuedCollectable = async (id: string): Promise<IssuedCollectable> =>
   })
 }
 
+const equipKnife = async (token: string, userID: string, knifeID: string) => {
+  let resp = await fetch("/api/user/equip", {
+    method: "POST",
+    headers: {
+      "Authorization": token,
+    },
+    body: JSON.stringify({
+      UserID: userID,
+      IssuedID: knifeID,
+    }),
+  });
+
+  if (resp.status !== 200) {
+    throw new Error("Error")
+  }
+};
+
 export const Pull: Component<PullProps> = (props) => {
   const params = useParams();
 
@@ -36,7 +54,10 @@ export const Pull: Component<PullProps> = (props) => {
   const am = useAuthManager();
 
   const equip = async () => {
-    console.log("EQUIP DIS BADBOI", collectable()?.instance_id);
+    let owner = collectable()?.owner.id || "";
+    let instance_id = collectable()?.instance_id || "";
+    let token = am.token() || "";
+    return await equipKnife(token, owner, instance_id);
   };
 
   return (
@@ -52,7 +73,7 @@ export const Pull: Component<PullProps> = (props) => {
         <section class="info-card">
           <Show when={am.user() && am.user()!.id == collectable()!.owner.id}>
             <div class="flex-mid">
-              <div class="button" onClick={equip}>Equip this knife</div>
+              <Button text="Equip this Knife" onClick={equip} />
             </div>
           </Show>
           <div>

@@ -436,8 +436,8 @@ func (s *Server) getUserCollection(w http.ResponseWriter, r *http.Request) {
 }
 
 type EquipPayload struct {
-	UserID   int
-	IssuedID int
+	UserID   string
+	IssuedID string
 }
 
 func (s *Server) EquipHandler(w http.ResponseWriter, r *http.Request) {
@@ -456,13 +456,25 @@ func (s *Server) EquipHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if payload.UserID == 0 {
+	if payload.UserID == "" {
 		serveAPIErr(w, fmt.Errorf("payload has zero value for UserID"), http.StatusBadRequest, "UserID must be specified")
 		return
 	}
 
-	if payload.IssuedID == 0 {
+	parseduid, err := strconv.Atoi(payload.UserID)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "UserID not numeric ")
+		return
+	}
+
+	if payload.IssuedID == "" {
 		serveAPIErr(w, fmt.Errorf("payload has zero value for IssuedID"), http.StatusBadRequest, "InstanceID must be specified")
+		return
+	}
+
+	issuedID, err := strconv.Atoi(payload.IssuedID)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "IssuedID not numeric ")
 		return
 	}
 
@@ -477,7 +489,7 @@ func (s *Server) EquipHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !user.Admin && (user.ID != payload.UserID) {
+	if !user.Admin && (user.ID != parseduid) {
 		serveAPIErr(
 			w,
 			fmt.Errorf("non admin user (%d) tried to equip knife for someone else", user.ID),
@@ -488,7 +500,7 @@ func (s *Server) EquipHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Lookup if knife is owned by user
-	issuedRaw, err := s.db.GetKnife(ctx, payload.IssuedID)
+	issuedRaw, err := s.db.GetKnife(ctx, issuedID)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			serveAPIErr(w, err, http.StatusNotFound, "Unknown issued collectable")
@@ -498,7 +510,7 @@ func (s *Server) EquipHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if issuedRaw.OwnerID != payload.UserID {
+	if issuedRaw.OwnerID != parseduid {
 		serveAPIErr(
 			w,
 			fmt.Errorf("user doesn't own collectable requested to equip"),
@@ -508,7 +520,7 @@ func (s *Server) EquipHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.db.EquipKnifeForUser(ctx, payload.UserID, payload.IssuedID)
+	err = s.db.EquipKnifeForUser(ctx, parseduid, issuedID)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusInternalServerError, "")
 		return

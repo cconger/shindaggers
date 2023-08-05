@@ -9,6 +9,7 @@ import { Home } from './Home';
 import { Pull } from './Pull';
 import { NavLogin, LoginLander } from './LoginButton';
 import { UserCollection } from './User';
+import { ButtonTest } from './Button';
 
 const root = document.getElementById('root');
 
@@ -37,6 +38,7 @@ render(() => (
       <Route path="/user/:id" component={UserCollection} />
       <Route path="/catalog" component={Catalog} />
       <Route path="/catalog/:id" component={CatalogCard} />
+      <Route path="/buttontest" component={ButtonTest} />
     </Routes>
   </Router>
 ), root!);
