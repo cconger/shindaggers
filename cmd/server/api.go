@@ -17,7 +17,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var errUnimplmeneted = fmt.Errorf("unimplemented")
+var (
+	errUnimplmeneted = fmt.Errorf("unimplemented")
+	errAdminOnly     = fmt.Errorf("admin only")
+)
 
 type apierror struct {
 	StatusCode   int    `json:"status"`
@@ -117,6 +120,13 @@ func CollectableFromDBKnifeType(k *db.KnifeType) Collectable {
 		},
 		Rarity:    k.Rarity,
 		ImagePath: k.ImageName,
+	}
+}
+
+func UserFromDBUser(u *db.User) User {
+	return User{
+		ID:   strconv.Itoa(u.ID),
+		Name: u.Name,
 	}
 }
 
@@ -254,15 +264,24 @@ func (s *Server) getAuth(ctx context.Context, r *http.Request) (*db.UserAuth, er
 	return auth, nil
 }
 
+func (s *Server) getAuthUser(ctx context.Context, r *http.Request) (*db.User, error) {
+	a, err := s.getAuth(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	u, err := s.db.GetUserByID(ctx, a.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
+}
+
 func (s *Server) getLoggedInUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	auth, err := s.getAuth(ctx, r)
-	if err != nil {
-		serveAPIErr(w, err, http.StatusForbidden, "Unable to identify authenticated user")
-	}
-
-	u, err := s.db.GetUserByID(ctx, auth.UserID)
+	u, err := s.getAuthUser(ctx, r)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusForbidden, "Could not get user for token")
 		return
@@ -273,10 +292,49 @@ func (s *Server) getLoggedInUser(w http.ResponseWriter, r *http.Request) {
 		&struct {
 			User User
 		}{
-			User: User{
-				ID:   strconv.Itoa(u.ID),
-				Name: u.Name,
-			},
+			User: UserFromDBUser(u),
+		},
+	)
+}
+
+func (s *Server) getUsers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Get Query Param and do *LIKE* search
+
+	search := r.URL.Query().Get("search")
+	if search == "" {
+		serveAPIErr(
+			w,
+			fmt.Errorf("search query for getUsers required"),
+			http.StatusBadRequest,
+			"Search param required",
+		)
+		return
+	}
+
+	udbs, err := s.db.GetUsers(ctx, search)
+	if err != nil {
+		serveAPIErr(
+			w,
+			err,
+			http.StatusInternalServerError,
+			"error loading users",
+		)
+		return
+	}
+
+	users := make([]User, len(udbs))
+	for i, u := range udbs {
+		users[i] = UserFromDBUser(u)
+	}
+
+	serveAPIPayload(
+		w,
+		&struct {
+			Users []User
+		}{
+			Users: users,
 		},
 	)
 }
@@ -525,4 +583,180 @@ func (s *Server) EquipHandler(w http.ResponseWriter, r *http.Request) {
 		serveAPIErr(w, err, http.StatusInternalServerError, "")
 		return
 	}
+}
+
+func (s *Server) adminListCollectables(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	u, err := s.getAuthUser(ctx, r)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
+		return
+	}
+
+	if !u.Admin {
+		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
+		return
+	}
+
+	dbknives, err := s.db.GetCollection(ctx, true)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "")
+		return
+	}
+
+	collectables := make([]Collectable, len(dbknives))
+
+	for i, k := range dbknives {
+		collectables[i] = CollectableFromDBKnifeType(k)
+	}
+
+	serveAPIPayload(
+		w,
+		&struct {
+			Collectables []Collectable
+		}{
+			Collectables: collectables,
+		},
+	)
+}
+
+func (s *Server) adminCreateCollectable(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	u, err := s.getAuthUser(ctx, r)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
+		return
+	}
+
+	if !u.Admin {
+		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
+		return
+	}
+
+	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
+}
+
+func (s *Server) adminGetCollectable(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	u, err := s.getAuthUser(ctx, r)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
+		return
+	}
+
+	if !u.Admin {
+		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
+		return
+	}
+
+	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
+}
+
+func (s *Server) adminDeleteCollectable(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	u, err := s.getAuthUser(ctx, r)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
+		return
+	}
+
+	if !u.Admin {
+		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
+		return
+	}
+
+	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
+}
+
+func (s *Server) adminUpdateCollectable(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	u, err := s.getAuthUser(ctx, r)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
+		return
+	}
+
+	if !u.Admin {
+		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
+		return
+	}
+
+	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
+}
+
+func (s *Server) adminIssueCollectable(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	u, err := s.getAuthUser(ctx, r)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
+		return
+	}
+
+	if !u.Admin {
+		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
+		return
+	}
+
+	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
+}
+
+func (s *Server) adminRevokeIssuedCollectable(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	u, err := s.getAuthUser(ctx, r)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
+		return
+	}
+
+	if !u.Admin {
+		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
+		return
+	}
+
+	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
+}
+
+type IssuedConfig struct {
+	Weights map[string]int
+}
+
+func (s *Server) adminGetIssueConfig(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	u, err := s.getAuthUser(ctx, r)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
+		return
+	}
+
+	if !u.Admin {
+		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
+		return
+	}
+
+	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
+}
+
+func (s *Server) adminUpdateIssueConfig(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	u, err := s.getAuthUser(ctx, r)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
+		return
+	}
+
+	if !u.Admin {
+		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
+		return
+	}
+
+	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
 }

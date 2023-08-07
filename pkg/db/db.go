@@ -61,6 +61,7 @@ type KnifeDB interface {
 	GetKnife(ctx context.Context, knifeID int) (*Knife, error)
 	GetKnivesForUsername(ctx context.Context, username string) ([]*Knife, error)
 
+	GetUsers(ctx context.Context, substr string) ([]*User, error)
 	GetUserByID(ctx context.Context, id int) (*User, error)
 	GetUserByTwitchID(ctx context.Context, id string) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
@@ -81,6 +82,9 @@ type KnifeDB interface {
 	DeleteKnifeType(ctx context.Context, knife *KnifeType) error
 
 	GetEditions(ctx context.Context) ([]*Edition, error)
+
+	// ImageUpload Log
+	CreateImageUpload(ctx context.Context, id int64, path string, uploadname string) error
 
 	// Twitch Auth
 	GetAuth(ctx context.Context, token []byte) (*UserAuth, error)

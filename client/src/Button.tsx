@@ -75,7 +75,7 @@ export const Button: Component<ButtonProps> = (props) => {
               exit={exit}
               transition={transition}
             >
-              <img src={spinner} alt="spinner" />
+              <img src="https://images.shindaggers.io/images/spinner.svg" alt="spinner" />
             </Motion.div>
           </Match>
           <Match when={state() === ButtonState.Success}>

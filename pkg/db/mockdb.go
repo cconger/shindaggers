@@ -37,6 +37,10 @@ func (m *MockDB) GetKnivesForUsername(ctx context.Context, username string) ([]*
 	return res, nil
 }
 
+func (m *MockDB) GetUsers(ctx context.Context, substr string) ([]*User, error) {
+	return nil, nil
+}
+
 func (m *MockDB) GetUserByID(ctx context.Context, id int) (*User, error) {
 	res := &User{}
 	faker.FakeData(&res)
@@ -115,4 +119,8 @@ func (m *MockDB) SaveAuth(ctx context.Context, auth *UserAuth) (*UserAuth, error
 
 func (m *MockDB) Close(context.Context) error {
 	return nil
+}
+
+func (m *MockDB) CreateImageUpload(ctx context.Context, id int64, path string, uploadname string) error {
+	return ErrNoWrites
 }

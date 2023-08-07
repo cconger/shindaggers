@@ -22,6 +22,7 @@ import (
 	"github.com/cconger/shindaggers/pkg/db"
 	"github.com/cconger/shindaggers/pkg/twitch"
 
+	"github.com/bwmarrin/snowflake"
 	"github.com/gorilla/mux"
 	"github.com/minio/minio-go/v7"
 )
@@ -95,6 +96,7 @@ type Server struct {
 	baseURL        string
 	minioClient    blobClient
 	bucketName     string
+	idGenerator    *snowflake.Node
 
 	template *template.Template
 }
@@ -811,6 +813,89 @@ func (s *Server) AdminDeleteKnife(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) ImageUpload(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	err := r.ParseMultipartForm(32 << 20) // 32MB maximum file size
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "could not parse form")
+		return
+	}
+
+	rawToken := r.FormValue("token")
+	t, err := base64.URLEncoding.DecodeString(rawToken)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "token unreadable")
+		return
+	}
+
+	auth, err := s.db.GetAuth(ctx, t)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "invalid token")
+		return
+	}
+
+	user, err := s.db.GetUserByID(ctx, auth.UserID)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "unknown user")
+		return
+	}
+
+	if !user.Admin {
+		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
+		return
+	}
+
+	// Get the file from the request
+	file, handler, err := r.FormFile("image")
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "no image detected")
+		return
+	}
+	defer file.Close()
+
+	// Check the file type and size
+	if !strings.HasPrefix(handler.Header.Get("Content-Type"), "image/") {
+		serveAPIErr(w, fmt.Errorf("file not image"), http.StatusBadRequest, "file not image")
+		return
+	}
+	if handler.Size > 32<<20 {
+		serveAPIErr(w, fmt.Errorf("file too large"), http.StatusBadRequest, "file too large")
+		return
+	}
+
+	newImageID := s.idGenerator.Generate()
+	uploadName := path.Base(handler.Filename)
+	ext := path.Ext(handler.Filename)
+
+	basename := newImageID.String() + ext
+	if s.minioClient != nil {
+		_, err = s.minioClient.PutObject(ctx, s.bucketName, path.Join("images", basename), file, handler.Size, minio.PutObjectOptions{
+			ContentType: handler.Header.Get("Content-Type"),
+		})
+		if err != nil {
+			serveAPIErr(w, err, http.StatusBadRequest, "error uploading image")
+			return
+		}
+	}
+
+	err = s.db.CreateImageUpload(ctx, newImageID.Int64(), basename, uploadName)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "error saving image upload image")
+		return
+	}
+
+	// RETURN THE IMAGE TO PREVIEW
+	serveAPIPayload(
+		w,
+		&struct {
+			Image string
+		}{
+			Image: basename,
+		},
+	)
 }
 
 // AdminCreateKnife is the endpoint for creating a new new knife

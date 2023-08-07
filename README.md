@@ -42,10 +42,9 @@ If you just want to work on the presentation you can run the webapp in standalon
  - [ ] Live "Latest"
  - [ ] Admin Pages Moved to JS App
  - [ ] Allow logged in subscribers to upload knives direct to site pending approval
- - [ ] Allow logged in users to "equip" a knife
+ - [x] Allow logged in users to "equip" a knife
 
 ###  Exploration Ideas
 
  - [ ] Generate lore for knife issuance on pull (chatgpt4?)
  - [ ] Allow users to trade knives?
-

@@ -413,6 +413,65 @@ func (sd *SDDB) GetUserByUsername(ctx context.Context, username string) (*User, 
 	return &user, nil
 }
 
+var getUsersSearchQuery = `
+SELECT
+  id,
+  twitch_name,
+  lookup_name,
+  IFNULL(twitch_id, '') as twitch_id,
+  created_at
+FROM users
+WHERE lookup_name LIKE CONCAT('%%', ?, '%%')
+LIMIT 10;
+`
+
+func (sd *SDDB) GetUsers(ctx context.Context, substr string) ([]*User, error) {
+	if substr == "" {
+		return nil, fmt.Errorf("search string required")
+	}
+
+	query, err := sd.db.Prepare(getUsersSearchQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := query.QueryContext(ctx, substr)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil, nil
+	}
+
+	users := []*User{}
+	for rows.Next() {
+		var createdAt string
+
+		var user User
+		err = rows.Scan(
+			&user.ID,
+			&user.Name,
+			&user.LookupName,
+			&user.TwitchID,
+			&createdAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		user.CreatedAt, err = parseTimestamp(createdAt)
+		if err != nil {
+			return nil, err
+		}
+
+		users = append(users, &user)
+	}
+
+	return users, nil
+}
+
 var createUserQuery = `INSERT INTO users (twitch_name, lookup_name, twitch_id) VALUES (?, ?, ?);`
 
 var createUserByNameQuery = `INSERT INTO users (twitch_name, lookup_name) VALUES (?, ?);`
@@ -944,4 +1003,8 @@ func (sd *SDDB) GetEquippedKnifeForUser(ctx context.Context, userID int) (*Knife
 	}
 
 	return &knife, nil
+}
+
+func (sd *SDDB) CreateImageUpload(ctx context.Context, id int64, path string, uploadname string) error {
+	return fmt.Errorf("not implemented")
 }

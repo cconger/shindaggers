@@ -16,6 +16,7 @@ import (
 	"github.com/cconger/shindaggers/pkg/db"
 	"github.com/cconger/shindaggers/pkg/twitch"
 
+	"github.com/bwmarrin/snowflake"
 	"github.com/gorilla/mux"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -133,6 +134,21 @@ func main() {
 		}
 	}
 
+	alloc_id := os.Getenv("FLY_ALLOC_ID")
+	if alloc_id == "" {
+		alloc_id = "3ff" // Dev Node
+	}
+	node_value, err := strconv.ParseInt(alloc_id[len(alloc_id)-3:], 16, 64)
+	if err != nil {
+		log.Fatalf("Unable to parse the node_value from %s", alloc_id)
+	}
+	log.Println("Running with node id:", node_value)
+
+	node, err := snowflake.NewNode(node_value)
+	if err != nil {
+		log.Fatal("Unable to create node generator", err)
+	}
+
 	s := Server{
 		devMode:        *devMode,
 		db:             dbClient,
@@ -141,6 +157,7 @@ func main() {
 		twitchClient:   twitchClient,
 		minioClient:    blobClient,
 		bucketName:     "sd-images",
+		idGenerator:    node,
 
 		baseURL: baseURL,
 	}
@@ -161,6 +178,9 @@ func main() {
 	r.HandleFunc("/api/user/{userid}/equipped", s.getEquippedForUser).Methods(http.MethodGet)
 	r.HandleFunc("/api/user/{userid}/collection", s.getUserCollection).Methods(http.MethodGet)
 
+	// Search Users
+	r.HandleFunc("/api/users", s.getUsers).Methods(http.MethodGet)
+
 	// Legacy URL to be deleted
 	r.HandleFunc("/pull/{token}", s.PullHandler).Methods(http.MethodPost)
 
@@ -168,13 +188,27 @@ func main() {
 	r.HandleFunc("/api/user/equip", s.EquipHandler).Methods(http.MethodPost)
 
 	// ADMIN APIs
+	r.HandleFunc("/api/admin/collectables", s.adminListCollectables).Methods(http.MethodGet)
 	// Create Collectable
+	r.HandleFunc("/api/admin/collectable", s.adminCreateCollectable).Methods(http.MethodPost)
 	// Modify Collectable
+	r.HandleFunc("/api/admin/collectable/{id}", s.adminUpdateCollectable).Methods(http.MethodPut)
 	// Delete Collectable
+	r.HandleFunc("/api/admin/collectable/{id}", s.adminDeleteCollectable).Methods(http.MethodDelete)
 
-	// Random Issue to User
-	// Issue Specific IssuedCollectable
+	// Issue IssuedCollectable to User
+	r.HandleFunc("/api/admin/issue", s.adminIssueCollectable).Methods(http.MethodPost)
+
 	// Revoke IssuedCollectable
+	r.HandleFunc("/api/admin/issued/{id}", s.adminRevokeIssuedCollectable).Methods(http.MethodDelete)
+
+	// IssueConfig changes manages the weights of random pulls
+	r.HandleFunc("/api/admin/issueconfig", s.adminGetIssueConfig).Methods(http.MethodGet)
+	// ChangeIssueConfig
+	r.HandleFunc("/api/admin/issueconfig", s.adminUpdateIssueConfig).Methods(http.MethodPut)
+
+	// Image Upload
+	r.HandleFunc("/api/image", s.adminUpdateIssueConfig).Methods(http.MethodPost)
 
 	// AuthorizeChannel // For setting the channel that we check for sub to
 
