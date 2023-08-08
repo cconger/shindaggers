@@ -122,6 +122,12 @@ type TwitchUserPayload struct {
 
 func (c *Client) GetUser(ctx context.Context, token string) (*TwitchUser, error) {
 	users, err := c.GetUsersByLogin(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	if len(users) < 1 {
+		return nil, fmt.Errorf("twitch user not found")
+	}
 	return users[0], err
 }
 

@@ -148,6 +148,10 @@ section.pulls {
   margin: 0;
 }
 
+.input-button.valid input {
+  border-color: #00FF00;
+}
+
 .input-button .button {
   margin: 0;
   background: #F39643;

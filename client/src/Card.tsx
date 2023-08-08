@@ -13,9 +13,8 @@ type CardProps = {
 
 export const Card: Component<CardProps> = (props) => {
 
-  const { collectable, issuedCollectable } = props;
-  const imageURL = "https://images.shindaggers.io/images/" + collectable.image_path;
-  const cls = ["card", rarityclass(collectable.rarity)].join(" ");
+  const imageURL = "https://images.shindaggers.io/images/" + props.collectable.image_path;
+  const cls = () => ["card", rarityclass(props.collectable.rarity)].join(" ");
 
   let card: HTMLDivElement | undefined;
   onMount(() => {
@@ -26,7 +25,7 @@ export const Card: Component<CardProps> = (props) => {
   })
 
   return (
-    <div class={cls} ref={card}>
+    <div class={cls()} ref={card}>
       <svg class="border border-top" width="260" height="160" viewBox="0 0 272 159" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M136 9H9V159" stroke-width="17" />
         <path d="M160 9H221" stroke-width="17" />
@@ -35,39 +34,39 @@ export const Card: Component<CardProps> = (props) => {
 
       <div class="card-label">
         <div class="justified">
-          <div>{collectable.rarity}</div>
+          <div>{props.collectable.rarity}</div>
         </div>
         <div class="edition">
         </div>
       </div>
 
       <div class="micro-title">
-        {collectable.name}
+        {props.collectable.name}
       </div>
 
       <div class="macro-title">
-        <TextArtBG name={collectable.name} lineHeight={120} size={{ width: 480, height: 500 }} fontSize={100} />
+        <TextArtBG name={props.collectable.name} lineHeight={120} size={{ width: 480, height: 500 }} fontSize={100} />
       </div>
 
       <div class="card-image">
-        <img src={imageURL} />
+        <img src={props.collectable.image_url} />
       </div>
 
       <div class="badges">
-        <Show when={issuedCollectable?.deleted}>
+        <Show when={props.issuedCollectable?.deleted}>
           <div class="deleted" title="This knife was deleted. 🤫"></div>
         </Show>
-        <Show when={issuedCollectable?.verified}>
+        <Show when={props.issuedCollectable?.verified}>
           <div class="verified" title="Verified Issue"></div>
         </Show>
-        <Show when={issuedCollectable?.subscriber}>
+        <Show when={props.issuedCollectable?.subscriber}>
           <div class="subscribed" title="Subscriber Issue"></div>
         </Show>
       </div>
 
       <div class="card-attribution">
         <div class="label">Crafted By</div>
-        <div>{collectable.author.name}</div>
+        <div>{props.collectable.author.name}</div>
       </div>
 
       <svg class="border border-bottom" width="260" height="160" viewBox="0 0 263 156" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -144,7 +144,7 @@ func main() {
 	}
 	log.Println("Running with node id:", node_value)
 
-	node, err := snowflake.NewNode(node_value)
+	node, err := snowflake.NewNode(node_value % 1024)
 	if err != nil {
 		log.Fatal("Unable to create node generator", err)
 	}
@@ -185,6 +185,7 @@ func main() {
 	r.HandleFunc("/pull/{token}", s.PullHandler).Methods(http.MethodPost)
 
 	r.HandleFunc("/api/pull/{token}", s.PullHandler).Methods(http.MethodPost)
+	r.HandleFunc("/api/randompull/{token}", s.RandomPullHandler).Methods(http.MethodPost)
 	r.HandleFunc("/api/user/equip", s.EquipHandler).Methods(http.MethodPost)
 
 	// ADMIN APIs
@@ -208,7 +209,7 @@ func main() {
 	r.HandleFunc("/api/admin/issueconfig", s.adminUpdateIssueConfig).Methods(http.MethodPut)
 
 	// Image Upload
-	r.HandleFunc("/api/image", s.adminUpdateIssueConfig).Methods(http.MethodPost)
+	r.HandleFunc("/api/image", s.ImageUpload).Methods(http.MethodPost)
 
 	// AuthorizeChannel // For setting the channel that we check for sub to
 

@@ -818,33 +818,20 @@ func (s *Server) AdminDeleteKnife(w http.ResponseWriter, r *http.Request) {
 func (s *Server) ImageUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	err := r.ParseMultipartForm(32 << 20) // 32MB maximum file size
+	user, err := s.getAuthUser(ctx, r)
 	if err != nil {
-		serveAPIErr(w, err, http.StatusBadRequest, "could not parse form")
-		return
-	}
-
-	rawToken := r.FormValue("token")
-	t, err := base64.URLEncoding.DecodeString(rawToken)
-	if err != nil {
-		serveAPIErr(w, err, http.StatusForbidden, "token unreadable")
-		return
-	}
-
-	auth, err := s.db.GetAuth(ctx, t)
-	if err != nil {
-		serveAPIErr(w, err, http.StatusForbidden, "invalid token")
-		return
-	}
-
-	user, err := s.db.GetUserByID(ctx, auth.UserID)
-	if err != nil {
-		serveAPIErr(w, err, http.StatusForbidden, "unknown user")
+		serveAPIErr(w, err, http.StatusBadRequest, "could not determine user")
 		return
 	}
 
 	if !user.Admin {
 		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
+		return
+	}
+
+	err = r.ParseMultipartForm(32 << 20) // 32MB maximum file size
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "could not parse form")
 		return
 	}
 
@@ -881,7 +868,7 @@ func (s *Server) ImageUpload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = s.db.CreateImageUpload(ctx, newImageID.Int64(), basename, uploadName)
+	err = s.db.CreateImageUpload(ctx, newImageID.Int64(), user.ID, basename, uploadName)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusInternalServerError, "error saving image upload image")
 		return
@@ -891,9 +878,11 @@ func (s *Server) ImageUpload(w http.ResponseWriter, r *http.Request) {
 	serveAPIPayload(
 		w,
 		&struct {
-			Image string
+			ImagePath string
+			ImageURL  string
 		}{
-			Image: basename,
+			ImagePath: basename,
+			ImageURL:  "https://images.shindaggers.io/images/" + basename,
 		},
 	)
 }

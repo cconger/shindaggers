@@ -56,6 +56,13 @@ type Edition struct {
 	UpdatedAt time.Time
 }
 
+type PullWeight struct {
+	CommunityID int64
+	Rarity      string
+	Weight      int
+	UpdatedAt   time.Time
+}
+
 type KnifeDB interface {
 	GetLatestPulls(ctx context.Context) ([]*Knife, error)
 	GetKnife(ctx context.Context, knifeID int) (*Knife, error)
@@ -77,14 +84,20 @@ type KnifeDB interface {
 
 	GetCollection(ctx context.Context, getDeleted bool) ([]*KnifeType, error)
 	GetKnifeType(ctx context.Context, id int, getDeleted bool) (*KnifeType, error)
+	GetKnifeTypesByRarity(ctx context.Context, rarity string) ([]*KnifeType, error)
 
 	UpdateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeType, error)
 	DeleteKnifeType(ctx context.Context, knife *KnifeType) error
 
 	GetEditions(ctx context.Context) ([]*Edition, error)
 
+	// Pull Weights
+	GetWeights(ctx context.Context) ([]*PullWeight, error)
+	SetWeights(ctx context.Context, weights []*PullWeight) ([]*PullWeight, error)
+	IssueCollectable(ctx context.Context, collectableID int, userID int, subscriber bool, verified bool, editionID int, source string) (*Knife, error)
+
 	// ImageUpload Log
-	CreateImageUpload(ctx context.Context, id int64, path string, uploadname string) error
+	CreateImageUpload(ctx context.Context, id int64, authorID int, path string, uploadname string) error
 
 	// Twitch Auth
 	GetAuth(ctx context.Context, token []byte) (*UserAuth, error)

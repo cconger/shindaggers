@@ -441,10 +441,6 @@ func (sd *SDDB) GetUsers(ctx context.Context, substr string) ([]*User, error) {
 	}
 	defer rows.Close()
 
-	if !rows.Next() {
-		return nil, nil
-	}
-
 	users := []*User{}
 	for rows.Next() {
 		var createdAt string
@@ -751,6 +747,56 @@ func (sd *SDDB) GetKnifeType(ctx context.Context, id int, getDeleted bool) (*Kni
 	return &k, nil
 }
 
+var getKnifeTypeRarityQuery = `
+SELECT
+  knives.id,
+  knives.name,
+  author.twitch_name,
+  author.id,
+  knives.rarity,
+  knives.image_name,
+  knives.deleted
+FROM knives
+LEFT JOIN users author ON knives.author_id = author.id
+WHERE knives.rarity = ?
+AND knives.deleted = false
+LIMIT 1;
+`
+
+func (sd *SDDB) GetKnifeTypesByRarity(ctx context.Context, rarity string) ([]*KnifeType, error) {
+	q, err := sd.db.PrepareContext(ctx, getKnifeTypeRarityQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := q.QueryContext(ctx, rarity)
+	if err != nil {
+		return nil, err
+	}
+
+	res := []*KnifeType{}
+	for rows.Next() {
+		var k KnifeType
+
+		err = rows.Scan(
+			&k.ID,
+			&k.Name,
+			&k.Author,
+			&k.AuthorID,
+			&k.Rarity,
+			&k.ImageName,
+			&k.Deleted,
+		)
+		if err != nil {
+			log.Printf("Error: scan GetCollection: %s", err)
+			return nil, err
+		}
+		res = append(res, &k)
+	}
+
+	return res, nil
+}
+
 var createKnifeTypeQuery = `
 INSERT INTO knives (name, author_id, rarity, image_name) VALUES (?, ?, ?, ?);
 `
@@ -1005,6 +1051,93 @@ func (sd *SDDB) GetEquippedKnifeForUser(ctx context.Context, userID int) (*Knife
 	return &knife, nil
 }
 
-func (sd *SDDB) CreateImageUpload(ctx context.Context, id int64, path string, uploadname string) error {
-	return fmt.Errorf("not implemented")
+var insertImageUpload = `
+INSERT INTO image_uploads (user_id, image_id, path, uploadname)
+VALUES (?, ?, ?, ?);
+`
+
+func (sd *SDDB) CreateImageUpload(ctx context.Context, id int64, authorID int, path string, uploadname string) error {
+	query, err := sd.db.Prepare(insertImageUpload)
+	if err != nil {
+		return err
+	}
+
+	_, err = query.ExecContext(ctx, authorID, id, path, uploadname)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (sd *SDDB) IssueCollectable(ctx context.Context, collectableID int, userID int, subscriber bool, verified bool, editionID int, source string) (*Knife, error) {
+	createQ, err := sd.db.PrepareContext(ctx, createKnifePullQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := createQ.ExecContext(ctx, userID, collectableID, source, subscriber, verified, editionID)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	return sd.GetKnife(ctx, int(id))
+}
+
+var getWeightQuery = `
+SELECT
+  community_id,
+  rarity,
+  weight,
+  updated_at
+FROM pullconfig
+WHERE community_id = 1;
+`
+
+func (sd *SDDB) GetWeights(ctx context.Context) ([]*PullWeight, error) {
+	q, err := sd.db.PrepareContext(ctx, getWeightQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := q.QueryContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	res := []*PullWeight{}
+
+	for rows.Next() {
+		var pw PullWeight
+
+		var updatedAt string
+
+		err = rows.Scan(
+			&pw.CommunityID,
+			&pw.Rarity,
+			&pw.Weight,
+			&updatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		pw.UpdatedAt, err = parseTimestamp(updatedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		res = append(res, &pw)
+	}
+
+	return res, nil
+}
+
+func (sd *SDDB) SetWeights(ctx context.Context, weights []*PullWeight) ([]*PullWeight, error) {
+	return nil, fmt.Errorf("NOT IMPLEMENTED")
 }

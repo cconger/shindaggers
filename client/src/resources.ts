@@ -9,6 +9,7 @@ export type Collectable = {
   author: User;
   rarity: Rarity;
   image_path: string;
+  image_url: string;
 };
 
 export type IssuedCollectable = Collectable & {
@@ -32,6 +33,14 @@ export enum Rarity {
 export const rarityclass = (r: Rarity): string => {
   return r.toString().toLowerCase().replaceAll(' ', '-')
 };
+
+export const rarities = [
+  Rarity.Common,
+  Rarity.Uncommon,
+  Rarity.Rare,
+  Rarity.SuperRare,
+  Rarity.UltraRare,
+];
 
 
 const colorMap = {

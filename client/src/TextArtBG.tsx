@@ -1,7 +1,7 @@
 import type { Component } from 'solid-js';
-import { onMount } from 'solid-js';
+import { onMount, createEffect } from 'solid-js';
 
-const paintText = (c: HTMLCanvasElement, text: string, scale: number, lineHeight: number, fontSize: number) => {
+const paintText = (c: HTMLCanvasElement, text: string, scale: number, lineHeight: number, fontSize: number, noscale: boolean) => {
   let strippedText = text.replace(/^\s*|\s(?=\s)|\s*$/g, "");
   let words = strippedText.split(' ');
 
@@ -10,7 +10,10 @@ const paintText = (c: HTMLCanvasElement, text: string, scale: number, lineHeight
 
   ctx.font = `800 ${fontSize}px Montserrat`;
   ctx.fillStyle = 'white';
-  ctx.scale(scale, scale);
+  if (!noscale) {
+    ctx.scale(scale, scale);
+  }
+  ctx.clearRect(0, 0, c.width, c.height)
 
   let canvasWidth = c.width;
   let renderWidth = canvasWidth / scale;
@@ -65,11 +68,16 @@ const TextArtBG: Component<TextArtBGProps> = (props) => {
 
   let fontSize = props.fontSize || 30;
 
-
   let canvas: HTMLCanvasElement | undefined;
   onMount(() => {
     if (canvas !== undefined) {
-      paintText(canvas, props.name, dpr, props.lineHeight, fontSize);
+      paintText(canvas, props.name, dpr, props.lineHeight, fontSize, false);
+    }
+  })
+
+  createEffect(() => {
+    if (canvas !== undefined) {
+      paintText(canvas, props.name, dpr, props.lineHeight, fontSize, true);
     }
   })
 

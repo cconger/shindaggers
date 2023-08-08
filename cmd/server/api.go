@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
@@ -95,6 +96,7 @@ type Collectable struct {
 	Author    User   `json:"author"`
 	Rarity    string `json:"rarity"`
 	ImagePath string `json:"image_path"`
+	ImageURL  string `json:"image_url"`
 }
 
 func CollectableFromDBKnife(k *db.Knife) Collectable {
@@ -107,6 +109,7 @@ func CollectableFromDBKnife(k *db.Knife) Collectable {
 		},
 		Rarity:    k.Rarity,
 		ImagePath: k.ImageName,
+		ImageURL:  "https://images.shindaggers.io/images/" + k.ImageName,
 	}
 }
 
@@ -120,6 +123,7 @@ func CollectableFromDBKnifeType(k *db.KnifeType) Collectable {
 		},
 		Rarity:    k.Rarity,
 		ImagePath: k.ImageName,
+		ImageURL:  "https://images.shindaggers.io/images/" + k.ImageName,
 	}
 }
 
@@ -759,4 +763,138 @@ func (s *Server) adminUpdateIssueConfig(w http.ResponseWriter, r *http.Request) 
 	}
 
 	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
+}
+
+type RandomPullRequest struct {
+	TwitchID   string `json:"twitch_id"`
+	Subscriber bool   `json:"subscriber"`
+	DryRun     bool   `json:"dry_run"`
+}
+
+func (s *Server) RandomPullHandler(w http.ResponseWriter, r *http.Request) {
+	if s.webhookSecret == "" {
+		serveAPIErr(w, fmt.Errorf("server running without webhook secret"), http.StatusInternalServerError, "")
+		return
+	}
+
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	token := vars["token"]
+	if token != s.webhookSecret {
+		serveAPIErr(w, fmt.Errorf("invalid webhook secret"), http.StatusForbidden, "")
+		return
+	}
+
+	var reqBody RandomPullRequest
+	err := json.NewDecoder(r.Body).Decode(&reqBody)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "could not parse")
+		return
+	}
+	defer r.Body.Close()
+
+	log.Printf("RandomPull: %+v", reqBody)
+
+	user, err := s.db.GetUserByTwitchID(ctx, reqBody.TwitchID)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+
+			twuser, err := s.twitchClient.GetUser(ctx, reqBody.TwitchID)
+			if err != nil {
+				serveAPIErr(w, err, http.StatusInternalServerError, "unable to get user from twitch")
+				return
+			}
+
+			user, err = s.db.CreateUser(ctx, &db.User{
+				TwitchID: twuser.ID,
+				Name:     twuser.DisplayName,
+			})
+		}
+		if err != nil {
+			serveAPIErr(w, err, http.StatusInternalServerError, "unexpected error")
+			return
+		}
+	}
+
+	collectable, err := s.getRandomCollectable(ctx)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "unexpected error")
+		return
+	}
+
+	verified := (rand.Intn(100) == 0)
+	collectableID, err := strconv.Atoi(collectable.ID)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "unexpected error")
+		return
+	}
+
+	var issued IssuedCollectable
+	if !reqBody.DryRun {
+		knifeRaw, err := s.db.IssueCollectable(ctx, collectableID, user.ID, reqBody.Subscriber, verified, 1, "pull")
+		if err != nil {
+			serveAPIErr(w, err, http.StatusInternalServerError, "unexpected error")
+			return
+		}
+
+		issued = IssuedCollectableFromDBKnife(knifeRaw)
+	} else {
+		issued = IssuedCollectable{
+			Collectable: *collectable,
+			InstanceID:  "dryrun",
+			Owner:       UserFromDBUser(user),
+			Verified:    verified,
+			Subscriber:  reqBody.Subscriber,
+			Edition:     "First Edition",
+			IssuedAt:    time.Now(),
+		}
+	}
+
+	serveAPIPayload(
+		w,
+		&struct {
+			IssuedCollectable IssuedCollectable
+		}{
+			IssuedCollectable: issued,
+		},
+	)
+}
+
+func (s *Server) getRandomCollectable(ctx context.Context) (*Collectable, error) {
+	weights, err := s.db.GetWeights(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Roll to Pick Rarity
+	var sum int64 = 0
+	for _, w := range weights {
+		sum += int64(w.Weight)
+	}
+
+	// Roll to Pick Knife
+	rarityRoll := rand.Int63n(sum)
+	rarity := ""
+	var acc int64 = 0
+	for _, w := range weights {
+		acc += int64(w.Weight)
+		if rarityRoll < acc {
+			rarity = w.Rarity
+			break
+		}
+	}
+
+	if rarity == "" {
+		return nil, fmt.Errorf("unable to pick a rarity: %d %+v", rarityRoll, weights)
+	}
+
+	c, err := s.db.GetKnifeTypesByRarity(ctx, rarity)
+	if err != nil {
+		return nil, err
+	}
+
+	// Give me a random knifetype
+	hit := CollectableFromDBKnifeType(c[rand.Intn(len(c))])
+
+	return &hit, nil
 }
