@@ -192,6 +192,8 @@ func main() {
 	r.HandleFunc("/api/admin/collectables", s.adminListCollectables).Methods(http.MethodGet)
 	// Create Collectable
 	r.HandleFunc("/api/admin/collectable", s.adminCreateCollectable).Methods(http.MethodPost)
+	// Get Collectable
+	r.HandleFunc("/api/admin/collectable/{id}", s.adminGetCollectable).Methods(http.MethodGet)
 	// Modify Collectable
 	r.HandleFunc("/api/admin/collectable/{id}", s.adminUpdateCollectable).Methods(http.MethodPut)
 	// Delete Collectable
@@ -214,7 +216,6 @@ func main() {
 	// AuthorizeChannel // For setting the channel that we check for sub to
 
 	r.HandleFunc("/admin", s.OnlyAdmin(s.AdminIndex))
-	r.HandleFunc("/admin/knife", s.OnlyAdmin(s.AdminKnifeList)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/knife", s.OnlyAdmin(s.AdminCreateKnife)).Methods(http.MethodPost)
 	r.HandleFunc("/admin/knife/{id:[0-9]+}", s.OnlyAdmin(s.AdminKnife)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/knife/{id:[0-9]+}", s.OnlyAdmin(s.AdminUpdateKnife)).Methods(http.MethodPut)

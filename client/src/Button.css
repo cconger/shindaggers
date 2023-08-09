@@ -13,6 +13,14 @@
   display: inline-block;
 }
 
+.button.warning {
+  background: #F0AD4E;
+}
+
+.button.danger {
+  background: #D4403A;
+}
+
 .button-action {
   overflow: hidden;
   position: relative;

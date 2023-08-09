@@ -50,3 +50,27 @@
   background: rgb(180, 180, 188);
   cursor: pointer;
 }
+
+.controls {
+  display: flex;
+  gap: 10px;
+}
+
+.or {
+  margin: 0 1em;
+}
+
+.admin-page {
+  margin: 0 3em;
+}
+
+.collectable-table {
+  display: grid;
+  grid-template-columns: auto auto auto auto auto auto;
+}
+
+.collectable-table .header {
+  font-size: 16px;
+  color: rgb(10, 10, 20);
+  font-weight: 700;
+}

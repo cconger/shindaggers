@@ -1,7 +1,8 @@
 import type { Component, JSX } from 'solid-js';
-import { Show, For, Match, Switch, createResource, createSignal, on } from 'solid-js';
+import { Show, For, Match, Switch, createResource, createSignal } from 'solid-js';
+import { A, useParams } from '@solidjs/router';
 import { Rarity, rarities } from './resources';
-import type { Collectable, User } from './resources';
+import type { AdminCollectable, Collectable, User } from './resources';
 import { createStore } from 'solid-js/store';
 import { Card } from './Card';
 import { useAuthManager } from './LoginButton';
@@ -19,39 +20,139 @@ type UploadState = {
 }
 
 export const AdminPage: Component = () => {
-
-
-
   return (
-    <div>
+    <div class="admin-page">
       <h1>Admin Page</h1>
 
-      <h2>Functionalty</h2>
-      <ul>
-        <li>Create new knife</li>
-        <li>Modify knives</li>
-        <li>Disable knives</li>
-        <li>Delete knife</li>
-        <li>Issue Knife</li>
-        <li>Change Weights</li>
-      </ul>
+      <h2>New Knife</h2>
+      <CollectableForm preview />
 
-      <CollectableForm />
-
+      <h2>Collectables</h2>
+      <CollectableList />
     </div>
   )
 }
 
-const CollectableForm: Component = () => {
+
+const fetchAdminCollectables = async (): Promise<AdminCollectable[]> => {
+  let am = useAuthManager();
+
+  let resp = await fetch("/api/admin/collectables", {
+    headers: {
+      "Authorization": am.token()!,
+    },
+  });
+
+  if (!resp.ok) {
+    throw new Error("unexpected status code: " + resp.status)
+  }
+
+  let body = await resp.json()
+
+  return body.Collectables || [];
+}
+
+const CollectableList: Component = () => {
+  const [collectables] = createResource(fetchAdminCollectables)
+
+  const [filterDeleted, setFilteredDeleted] = createSignal(true);
+
+  const shown = () => {
+    let cs = collectables();
+    if (!cs) {
+      return [];
+    }
+
+    let res = cs.slice().reverse();
+
+    if (filterDeleted()) {
+      res = res.filter((c) => !c.deleted);
+    }
+
+    return res;
+  }
+
+  return (
+    <div>
+      <div>
+        <label>Show Deleted
+          <input
+            type="checkbox"
+            checked={!filterDeleted()}
+            onChange={(e) => setFilteredDeleted(!e.currentTarget.checked)}
+          />
+        </label>
+      </div>
+      <Switch>
+        <Match when={collectables.loading}>
+          <div>Loading...</div>
+        </Match>
+        <Match when={collectables.error}>
+          <div>Error: {collectables.error.toString()}</div>
+        </Match>
+        <Match when={collectables()}>
+          <div class="collectable-table">
+            <div class="header">ID</div>
+            <div class="header">Name</div>
+            <div class="header">Author</div>
+            <div class="header">Rarity</div>
+            <div class="header">Image</div>
+            <div class="header">Active</div>
+            <For each={shown()}>
+              {(collectable) => (
+                <>
+                  <div> <A href={`/admin/knife/${collectable.id}`}>{collectable.id}</A> </div>
+                  <div> <A href={`/admin/knife/${collectable.id}`}>{collectable.name}</A> </div>
+                  <div>{collectable.author.name}</div>
+                  <div>{collectable.rarity}</div>
+                  <div><A href={collectable.image_url}>{collectable.image_path}</A></div>
+                  <div>{collectable.deleted ? "❌" : "✅"}</div>
+                </>
+              )}
+            </For>
+          </div>
+        </Match>
+      </Switch>
+    </div>
+  )
+}
+
+
+const deleteKnife = async (id: string): Promise<AdminCollectable> => {
+  let am = useAuthManager();
+
+  let resp = await fetch("/api/admin/collectable/" + id, {
+    method: "DELETE",
+    headers: {
+      "Authorization": am.token()!,
+    },
+  });
+
+  if (!resp.ok) {
+    throw new Error("unexpected status code: " + resp.status);
+  }
+
+  let body = await resp.json();
+  return body.Collectable;
+}
+
+type CollectableFormProps = {
+  collectable?: AdminCollectable;
+  preview?: boolean;
+  allowDelete?: boolean;
+  onSubmit?: (c: Collectable) => Promise<unknown>
+}
+
+const CollectableForm: Component<CollectableFormProps> = (props) => {
   let fileInputRef: HTMLInputElement | undefined = undefined;
 
   const [store, setStore] = createStore<UploadState>({
-    name: "Placeholder",
-    rarity: Rarity.Common,
-    author: null,
+    name: props.collectable?.name || "",
+    rarity: props.collectable?.rarity || Rarity.Common,
+    author: props.collectable?.author || null,
     image: null,
-    imagePreview: "",
-    preview: false,
+    imagePreview: props.collectable?.image_url || "",
+    preview: !!props.collectable,
   })
 
   let collectable = () => {
@@ -62,7 +163,7 @@ const CollectableForm: Component = () => {
     };
 
     return {
-      id: "undefined",
+      id: props.collectable?.id || "",
       name: name,
       author: author,
       rarity: store.rarity,
@@ -114,10 +215,6 @@ const CollectableForm: Component = () => {
     return await resp.json();
   }
 
-  let handleCreateCardAPI = async () => {
-    return null;
-  }
-
   let handleExistingImage: JSX.EventHandler<HTMLInputElement, Event> = (e) => {
     let url = e.currentTarget.value;
 
@@ -129,30 +226,46 @@ const CollectableForm: Component = () => {
     setStore({ imagePreview: "https://images.shindaggers.io/images/" + url, preview: true })
   }
 
-  let handleCreateCard = async () => {
-    let res = await handleUpload();
+  let handleSubmit = async () => {
+    await handleUpload();
+    if (props.onSubmit) {
+      await props.onSubmit(collectable());
+    } else {
+      console.error("no handler for submit", collectable())
+    }
   }
+
   return (
     <div class="form">
-      <h2>New Knife</h2>
       <div class="input-button">
-        <input placeholder="Name" onInput={(e) => setStore({ name: e.currentTarget.value })} />
+        <input
+          placeholder="Name"
+          value={store.name}
+          onInput={(e) => setStore({ name: e.currentTarget.value })}
+        />
       </div>
       <div>
         <select class="selector" id="rarity" name="rarity" onChange={(e) => setStore({ rarity: e.currentTarget.value as Rarity })}>
           <For each={rarities}>
             {(r) => (
-              <option value={r}>{r.toString()}</option>
+              <option value={r} selected={store.rarity == r}>{r.toString()}</option>
             )}
           </For>
         </select>
       </div>
-      <UserSearch onUserSelected={(u) => setStore({ author: u })} />
+      <UserSearch
+        default={props.collectable?.author}
+        onUserSelected={(u) => setStore({ author: u })}
+      />
       <div class="image-selector">
         <div class="input-button">
-          <input placeholder="Existing Image" onChange={handleExistingImage} />
+          <input
+            placeholder="Existing Image"
+            value={props.collectable?.image_path || ""}
+            onChange={handleExistingImage}
+          />
         </div>
-        <div><h3>Or</h3></div>
+        <div class="or"><h3>Or</h3></div>
         <div>
           <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={handleImageChange} />
           <div class="button" onClick={() => fileInputRef?.click()}>Upload Image</div>
@@ -160,9 +273,19 @@ const CollectableForm: Component = () => {
       </div>
 
       <Show when={store.preview} keyed>
-        <Button text="Create Card" onClick={handleCreateCard} />
+        <div class="controls">
+          <Button text="Submit" onClick={handleSubmit} />
+          <Show when={props.allowDelete && props.collectable}>
+            <Show when={props.collectable?.deleted}><h3>KNIFE IS DELETED</h3></Show>
+            <Show when={!props.collectable?.deleted}>
+              <Button text="Delete" danger onClick={() => deleteKnife(props.collectable!.id)} />
+            </Show>
+          </Show>
+        </div>
         <h3>Preview</h3>
-        <Card collectable={collectable()} />
+        <Show when={props.preview}>
+          <Card collectable={collectable()} />
+        </Show>
       </Show>
     </div>
   )
@@ -170,6 +293,7 @@ const CollectableForm: Component = () => {
 
 type UserSearchProps = {
   placeholder?: string,
+  default?: User,
   onUserSelected(u: User | null): unknown,
 }
 
@@ -190,7 +314,7 @@ const searchUsers = async (search: string): Promise<User[]> => {
 
 export const UserSearch: Component<UserSearchProps> = (props) => {
   const [search, setSearch] = createSignal("");
-  const [valid, setValid] = createSignal(false);
+  const [valid, setValid] = createSignal(!!props.default);
   const [searchResults] = createResource(() => search(), searchUsers)
 
   let placeholder = props.placeholder || "User"
@@ -214,7 +338,7 @@ export const UserSearch: Component<UserSearchProps> = (props) => {
   return (
     <>
       <div classList={cls()}>
-        <input ref={inputEl} placeholder={placeholder} onInput={(e) => { setValid(false); setSearch(e.target.value); }} />
+        <input ref={inputEl} value={props.default?.name || ""} placeholder={placeholder} onInput={(e) => { setValid(false); setSearch(e.target.value); }} />
         <div class="results">
           <Switch>
             <Match when={searchResults.loading}><img src="https://images.shindaggers.io/images/spinner.svg" /></Match>
@@ -233,14 +357,43 @@ export const UserSearch: Component<UserSearchProps> = (props) => {
   );
 }
 
-export const AdminCatalog: Component = () => {
-  return (
-    <div>AdminCatalog</div>
-  )
+const fetchAdminCollectable = async (id: string): Promise<AdminCollectable> => {
+  let am = useAuthManager();
+
+  let resp = await fetch("/api/admin/collectable/" + id, {
+    headers: {
+      "Authorization": am.token()!,
+    },
+  });
+
+  if (!resp.ok) {
+    throw new Error("unexpected status code: " + resp.status);
+  }
+
+  let body = await resp.json();
+  return body.Collectable;
 }
 
 export const AdminKnife: Component = () => {
+  const params = useParams();
+
+  let [collectable] = createResource(() => params.id, fetchAdminCollectable)
+
   return (
-    <div>AdminKnife</div>
+    <div class="admin-page">
+      <h1>AdminKnife</h1>
+      <Switch>
+        <Match when={collectable.loading}>
+          <div>Loading</div>
+        </Match>
+        <Match when={collectable.error}>
+          <div>Error</div>
+        </Match>
+        <Match when={collectable()}>
+          <h3>Modify Knife:</h3>
+          <CollectableForm collectable={collectable()!} allowDelete preview />
+        </Match>
+      </Switch>
+    </div>
   )
 }

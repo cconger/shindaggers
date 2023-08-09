@@ -127,6 +127,19 @@ func CollectableFromDBKnifeType(k *db.KnifeType) Collectable {
 	}
 }
 
+type AdminCollectable struct {
+	Collectable
+
+	Deleted bool `json:"deleted"`
+}
+
+func AdminCollectableFromDBKnifeType(k *db.KnifeType) AdminCollectable {
+	return AdminCollectable{
+		Collectable: CollectableFromDBKnifeType(k),
+		Deleted:     k.Deleted,
+	}
+}
+
 func UserFromDBUser(u *db.User) User {
 	return User{
 		ID:   strconv.Itoa(u.ID),
@@ -609,16 +622,16 @@ func (s *Server) adminListCollectables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collectables := make([]Collectable, len(dbknives))
+	collectables := make([]AdminCollectable, len(dbknives))
 
 	for i, k := range dbknives {
-		collectables[i] = CollectableFromDBKnifeType(k)
+		collectables[i] = AdminCollectableFromDBKnifeType(k)
 	}
 
 	serveAPIPayload(
 		w,
 		&struct {
-			Collectables []Collectable
+			Collectables []AdminCollectable
 		}{
 			Collectables: collectables,
 		},
@@ -626,23 +639,6 @@ func (s *Server) adminListCollectables(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) adminCreateCollectable(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	u, err := s.getAuthUser(ctx, r)
-	if err != nil {
-		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
-		return
-	}
-
-	if !u.Admin {
-		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
-		return
-	}
-
-	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
-}
-
-func (s *Server) adminGetCollectable(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	u, err := s.getAuthUser(ctx, r)
@@ -897,4 +893,41 @@ func (s *Server) getRandomCollectable(ctx context.Context) (*Collectable, error)
 	hit := CollectableFromDBKnifeType(c[rand.Intn(len(c))])
 
 	return &hit, nil
+}
+
+func (s *Server) adminGetCollectable(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	u, err := s.getAuthUser(ctx, r)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
+		return
+	}
+
+	if !u.Admin {
+		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
+		return
+	}
+
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "id is non numeric")
+		return
+	}
+
+	c, err := s.db.GetKnifeType(ctx, id, true)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "unable to get collectable")
+		return
+	}
+
+	serveAPIPayload(
+		w,
+		&struct {
+			Collectable AdminCollectable
+		}{
+			Collectable: AdminCollectableFromDBKnifeType(c),
+		},
+	)
 }

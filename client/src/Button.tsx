@@ -7,6 +7,8 @@ import spinner from './spinner.svg';
 
 export type ButtonProps = {
   text: string;
+  danger?: boolean
+  warn?: boolean
   onClick?: () => Promise<unknown>;
 };
 
@@ -21,6 +23,10 @@ export const Button: Component<ButtonProps> = (props) => {
   const [state, setState] = createSignal(ButtonState.Default);
 
   const handleClick = async () => {
+    if (props.danger) {
+      let res = window.confirm("Are you sure?")
+      if (!res) { return };
+    }
     if (state() !== ButtonState.Default) {
       return false;
     }
@@ -28,7 +34,7 @@ export const Button: Component<ButtonProps> = (props) => {
 
     if (props.onClick) {
       try {
-        let res = await props.onClick();
+        await props.onClick();
         setState(ButtonState.Success)
       } catch {
         setState(ButtonState.Fail)
@@ -55,8 +61,15 @@ export const Button: Component<ButtonProps> = (props) => {
     duration: 0.15
   };
 
+  let cls = {
+    "button": true,
+    "button-action": true,
+    "warn": props.warn,
+    "danger": props.danger,
+  };
+
   return (
-    <div class="button button-action" onClick={handleClick}>
+    <div classList={cls} onClick={handleClick}>
       <Presence>
         <Switch>
           <Match when={state() === ButtonState.Default}>

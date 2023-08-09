@@ -10,7 +10,7 @@ import { Pull } from './Pull';
 import { NavLogin, LoginLander } from './LoginButton';
 import { UserCollection } from './User';
 import { ButtonTest } from './Button';
-import { AdminPage, AdminCatalog, AdminKnife } from './Admin';
+import { AdminPage, AdminKnife } from './Admin';
 
 const root = document.getElementById('root');
 
@@ -40,7 +40,6 @@ render(() => (
       <Route path="/catalog" component={Catalog} />
       <Route path="/catalog/:id" component={CatalogCard} />
       <Route path="/admin" component={AdminPage} />
-      <Route path="/admin/catalog" component={AdminCatalog} />
       <Route path="/admin/knife/:id" component={AdminKnife} />
       <Route path="/buttontest" component={ButtonTest} />
     </Routes>

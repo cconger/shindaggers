@@ -12,6 +12,10 @@ export type Collectable = {
   image_url: string;
 };
 
+export type AdminCollectable = Collectable & {
+  deleted: boolean;
+}
+
 export type IssuedCollectable = Collectable & {
   instance_id: string;
   owner: User;
