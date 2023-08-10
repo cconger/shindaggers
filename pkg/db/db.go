@@ -23,13 +23,15 @@ type Knife struct {
 }
 
 type KnifeType struct {
-	ID        int
-	Name      string
-	Author    string
-	AuthorID  int
-	Rarity    string
-	ImageName string
-	Deleted   bool
+	ID         int
+	Name       string
+	Author     string
+	AuthorID   int
+	Rarity     string
+	ImageName  string
+	Deleted    bool
+	Approved   bool
+	ApprovedAt time.Time
 }
 
 type User struct {
@@ -83,8 +85,11 @@ type KnifeDB interface {
 	CreateEdition(ctx context.Context, edition *Edition) (*Edition, error)
 
 	GetCollection(ctx context.Context, getDeleted bool) ([]*KnifeType, error)
-	GetKnifeType(ctx context.Context, id int, getDeleted bool) (*KnifeType, error)
+	GetKnifeType(ctx context.Context, id int, getDeleted bool, getUnapproved bool) (*KnifeType, error)
 	GetKnifeTypesByRarity(ctx context.Context, rarity string) ([]*KnifeType, error)
+
+	GetPendingKnives(ctx context.Context) ([]*KnifeType, error)
+	ApproveKnifeType(ctx context.Context, id int, userID int) (*KnifeType, error)
 
 	UpdateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeType, error)
 	DeleteKnifeType(ctx context.Context, knife *KnifeType) error

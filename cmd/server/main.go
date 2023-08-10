@@ -169,6 +169,7 @@ func main() {
 
 	r.HandleFunc("/api/catalog", s.getCollection).Methods(http.MethodGet)
 	r.HandleFunc("/api/collectable/{id:[0-9]+}", s.getCollectable).Methods(http.MethodGet)
+	r.HandleFunc("/api/collectable", s.createCollectable).Methods(http.MethodPost)
 	r.HandleFunc("/api/issued/{id:[0-9]+}", s.getIssuedCollectable).Methods(http.MethodGet)
 
 	r.HandleFunc("/api/latest", s.getLatest).Methods(http.MethodGet)
@@ -196,6 +197,8 @@ func main() {
 	r.HandleFunc("/api/admin/collectable/{id}", s.adminGetCollectable).Methods(http.MethodGet)
 	// Modify Collectable
 	r.HandleFunc("/api/admin/collectable/{id}", s.adminUpdateCollectable).Methods(http.MethodPut)
+	// Modify Collectable
+	r.HandleFunc("/api/admin/collectable/{id}/approve", s.adminApproveCollectable).Methods(http.MethodPost)
 	// Delete Collectable
 	r.HandleFunc("/api/admin/collectable/{id}", s.adminDeleteCollectable).Methods(http.MethodDelete)
 
@@ -214,12 +217,6 @@ func main() {
 	r.HandleFunc("/api/image", s.ImageUpload).Methods(http.MethodPost)
 
 	// AuthorizeChannel // For setting the channel that we check for sub to
-
-	r.HandleFunc("/admin", s.OnlyAdmin(s.AdminIndex))
-	r.HandleFunc("/admin/knife", s.OnlyAdmin(s.AdminCreateKnife)).Methods(http.MethodPost)
-	r.HandleFunc("/admin/knife/{id:[0-9]+}", s.OnlyAdmin(s.AdminKnife)).Methods(http.MethodGet)
-	r.HandleFunc("/admin/knife/{id:[0-9]+}", s.OnlyAdmin(s.AdminUpdateKnife)).Methods(http.MethodPut)
-	r.HandleFunc("/admin/knife/{id:[0-9]+}", s.OnlyAdmin(s.AdminDeleteKnife)).Methods(http.MethodDelete)
 
 	r.PathPrefix("/assets").HandlerFunc(s.assetHandler)
 	r.PathPrefix("/").HandlerFunc(s.spaHandler)

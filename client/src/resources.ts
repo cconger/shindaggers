@@ -14,6 +14,7 @@ export type Collectable = {
 
 export type AdminCollectable = Collectable & {
   deleted: boolean;
+  approved: boolean;
 }
 
 export type IssuedCollectable = Collectable & {

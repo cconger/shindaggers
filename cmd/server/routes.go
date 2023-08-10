@@ -666,7 +666,7 @@ func (s *Server) CatalogView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	knife, err := s.db.GetKnifeType(ctx, id, false)
+	knife, err := s.db.GetKnifeType(ctx, id, false, false)
 	if err != nil {
 		servererr(w, err, http.StatusInternalServerError)
 		return
@@ -691,141 +691,12 @@ func (s *Server) CatalogView(w http.ResponseWriter, r *http.Request) {
 	s.renderTemplate(w, "catalog-knife.html", payload)
 }
 
-// AdminKnifeList renders the admin page for viewing knives
-func (s *Server) AdminKnifeList(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "NOT IMPLEMENTED", http.StatusInternalServerError)
-}
-
-// AdminKnife renders a page showing a current knife with a form to update
-func (s *Server) AdminKnife(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	vars := mux.Vars(r)
-
-	id, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		servererr(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	knife, err := s.db.GetKnifeType(ctx, id, true)
-	if err != nil {
-		servererr(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	payload := struct {
-		*db.KnifeType
-		RarityClass string
-	}{
-		knife,
-		className(knife.Rarity),
-	}
-
-	s.renderTemplate(w, "admin-knife.html", payload)
-}
-
-// AdminUpdateKnife is the endpoint for modifying a knife
-func (s *Server) AdminUpdateKnife(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	// Parse the multipart form
-	err := r.ParseMultipartForm(32 << 20) // 32 MB maximum file size
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	name := r.FormValue("name")
-	author := r.FormValue("author")
-	rarity := r.FormValue("rarity")
-	basename := ""
-
-	if r.Form.Has("image") {
-		// Get the file from the request
-		file, handler, err := r.FormFile("image")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		defer file.Close()
-
-		// Check the file type and size
-		if !strings.HasPrefix(handler.Header.Get("Content-Type"), "image/") {
-			http.Error(w, "File is not an image", http.StatusBadRequest)
-			return
-		}
-		if handler.Size > 32<<20 {
-			http.Error(w, "File is too large", http.StatusBadRequest)
-			return
-		}
-
-		basename := path.Base(handler.Filename)
-		if s.minioClient != nil {
-			_, err = s.minioClient.PutObject(ctx, s.bucketName, path.Join("images", basename), file, handler.Size, minio.PutObjectOptions{
-				ContentType: handler.Header.Get("Content-Type"),
-			})
-			if err != nil {
-				http.Error(w, fmt.Sprintf("Error uploading image %s", err), http.StatusBadRequest)
-				return
-			}
-		}
-	}
-
-	user, err := s.db.GetUserByUsername(ctx, author)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Unknown user %s", author), http.StatusBadRequest)
-		return
-	}
-
-	// Save Knife finally to db
-	k, err := s.db.UpdateKnifeType(ctx, &db.KnifeType{
-		Name:      name,
-		AuthorID:  user.ID,
-		Rarity:    rarity,
-		ImageName: basename,
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Redirect to adminKnifePage for new knife
-	http.Redirect(w, r, s.baseURL+"/admin/knife/"+strconv.Itoa(k.ID), http.StatusFound)
-}
-
-func (s *Server) AdminDeleteKnife(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	vars := mux.Vars(r)
-
-	id, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		servererr(w, err, http.StatusBadRequest)
-		return
-	}
-
-	err = s.db.DeleteKnifeType(ctx, &db.KnifeType{
-		ID: id,
-	})
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error deleting %d: %s", id, err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
 func (s *Server) ImageUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := s.getAuthUser(ctx, r)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusBadRequest, "could not determine user")
-		return
-	}
-
-	if !user.Admin {
-		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
 		return
 	}
 
@@ -885,78 +756,6 @@ func (s *Server) ImageUpload(w http.ResponseWriter, r *http.Request) {
 			ImageURL:  "https://images.shindaggers.io/images/" + basename,
 		},
 	)
-}
-
-// AdminCreateKnife is the endpoint for creating a new new knife
-func (s *Server) AdminCreateKnife(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	// Parse the multipart form
-	err := r.ParseMultipartForm(32 << 20) // 32 MB maximum file size
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	name := r.FormValue("name")
-	author := r.FormValue("author")
-	rarity := r.FormValue("rarity")
-
-	// Get the file from the request
-	file, handler, err := r.FormFile("image")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	defer file.Close()
-
-	// Check the file type and size
-	if !strings.HasPrefix(handler.Header.Get("Content-Type"), "image/") {
-		http.Error(w, "File is not an image", http.StatusBadRequest)
-		return
-	}
-	if handler.Size > 32<<20 {
-		http.Error(w, "File is too large", http.StatusBadRequest)
-		return
-	}
-
-	user, err := s.db.GetUserByUsername(ctx, author)
-	if err != nil {
-		user, err = s.db.CreateUser(ctx, &db.User{
-			Name: author,
-		})
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Could not create user %s", author), http.StatusBadRequest)
-			return
-		}
-
-	}
-
-	basename := path.Base(handler.Filename)
-	if s.minioClient != nil {
-		_, err = s.minioClient.PutObject(ctx, s.bucketName, path.Join("images", basename), file, handler.Size, minio.PutObjectOptions{
-			ContentType: handler.Header.Get("Content-Type"),
-		})
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Error uploading image %s", err), http.StatusBadRequest)
-			return
-		}
-	}
-
-	// Save Knife finally to db
-	k, err := s.db.CreateKnifeType(ctx, &db.KnifeType{
-		Name:      name,
-		AuthorID:  user.ID,
-		Rarity:    rarity,
-		ImageName: basename,
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Redirect to adminKnifePage for new knife
-	http.Redirect(w, r, s.baseURL+"/admin/knife/"+strconv.Itoa(k.ID), http.StatusFound)
 }
 
 func (s *Server) OnlyAdmin(inner http.HandlerFunc) http.HandlerFunc {

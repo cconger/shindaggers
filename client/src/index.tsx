@@ -10,7 +10,9 @@ import { Pull } from './Pull';
 import { NavLogin, LoginLander } from './LoginButton';
 import { UserCollection } from './User';
 import { ButtonTest } from './Button';
-import { AdminPage, AdminKnife } from './Admin';
+import { AdminWrapper, AdminPage, AdminKnife } from './Admin';
+import { FourOhFour } from './FourOhFour';
+import { Creator } from './Creator';
 
 const root = document.getElementById('root');
 
@@ -39,9 +41,13 @@ render(() => (
       <Route path="/user/:id" component={UserCollection} />
       <Route path="/catalog" component={Catalog} />
       <Route path="/catalog/:id" component={CatalogCard} />
-      <Route path="/admin" component={AdminPage} />
-      <Route path="/admin/knife/:id" component={AdminKnife} />
+      <Route path="/creator" component={Creator} />
+      <Route path="/admin" component={AdminWrapper}>
+        <Route path="/" component={AdminPage} />
+        <Route path="/knife/:id" component={AdminKnife} />
+      </Route>
       <Route path="/buttontest" component={ButtonTest} />
+      <Route path="*" component={FourOhFour} />
     </Routes>
   </Router>
 ), root!);

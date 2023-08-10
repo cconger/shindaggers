@@ -9,6 +9,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -19,9 +20,26 @@ import (
 )
 
 var (
+	errMissingField  = fmt.Errorf("missing required field")
 	errUnimplmeneted = fmt.Errorf("unimplemented")
 	errAdminOnly     = fmt.Errorf("admin only")
 )
+
+const (
+	RarityCommon    = "Common"
+	RarityUncommon  = "Uncommon"
+	RarityRare      = "Rare"
+	RaritySuperRare = "Super Rare"
+	RarityUltraRare = "Ultra Rare"
+)
+
+var rarities = []string{
+	RarityCommon,
+	RarityUncommon,
+	RarityRare,
+	RaritySuperRare,
+	RarityUltraRare,
+}
 
 type apierror struct {
 	StatusCode   int    `json:"status"`
@@ -130,13 +148,17 @@ func CollectableFromDBKnifeType(k *db.KnifeType) Collectable {
 type AdminCollectable struct {
 	Collectable
 
-	Deleted bool `json:"deleted"`
+	Deleted    bool      `json:"deleted"`
+	Approved   bool      `json:"approved"`
+	ApprovedAt time.Time `json:"approved_at"`
 }
 
 func AdminCollectableFromDBKnifeType(k *db.KnifeType) AdminCollectable {
 	return AdminCollectable{
 		Collectable: CollectableFromDBKnifeType(k),
 		Deleted:     k.Deleted,
+		Approved:    k.Approved,
+		ApprovedAt:  k.ApprovedAt,
 	}
 }
 
@@ -219,7 +241,7 @@ func (s *Server) getCollectable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dbknife, err := s.db.GetKnifeType(ctx, id, false)
+	dbknife, err := s.db.GetKnifeType(ctx, id, false, false)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			serveAPIErr(w, err, http.StatusNotFound, "Unknown collectable")
@@ -628,14 +650,81 @@ func (s *Server) adminListCollectables(w http.ResponseWriter, r *http.Request) {
 		collectables[i] = AdminCollectableFromDBKnifeType(k)
 	}
 
+	pendingknives, err := s.db.GetPendingKnives(ctx)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "")
+		return
+	}
+
+	pendingApproval := make([]AdminCollectable, len(pendingknives))
+	for i, k := range pendingknives {
+		pendingApproval[i] = AdminCollectableFromDBKnifeType(k)
+	}
+
 	serveAPIPayload(
 		w,
 		&struct {
-			Collectables []AdminCollectable
+			ApprovalQueue []AdminCollectable
+			Collectables  []AdminCollectable
 		}{
-			Collectables: collectables,
+			ApprovalQueue: pendingApproval,
+			Collectables:  collectables,
 		},
 	)
+}
+
+type CollectablePayload struct {
+	Collectable Collectable
+}
+
+func (s Server) createCollectable(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	u, err := s.getAuthUser(ctx, r)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
+		return
+	}
+
+	var payload CollectablePayload
+	err = json.NewDecoder(r.Body).Decode(&payload)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "could not parse body")
+		return
+	}
+	r.Body.Close()
+
+	if payload.Collectable.Name == "" {
+		serveAPIErr(w, errMissingField, http.StatusBadRequest, "Name cannot be empty")
+		return
+	}
+
+	if !slices.Contains(rarities, payload.Collectable.Rarity) {
+		serveAPIErr(w, errMissingField, http.StatusBadRequest, "Rarity is unknown")
+		return
+	}
+
+	if payload.Collectable.ImagePath == "" {
+		serveAPIErr(w, errMissingField, http.StatusBadRequest, "ImagePath cannot be empty")
+		return
+	}
+
+	created, err := s.db.CreateKnifeType(ctx, &db.KnifeType{
+		Name:      payload.Collectable.Name,
+		AuthorID:  u.ID,
+		Rarity:    payload.Collectable.Rarity,
+		ImageName: payload.Collectable.ImagePath,
+	})
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "could not create collectable")
+		return
+	}
+
+	serveAPIPayload(w, struct {
+		Collectable AdminCollectable
+	}{
+		Collectable: AdminCollectableFromDBKnifeType(created),
+	})
 }
 
 func (s *Server) adminCreateCollectable(w http.ResponseWriter, r *http.Request) {
@@ -652,7 +741,62 @@ func (s *Server) adminCreateCollectable(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
+	var payload CollectablePayload
+	err = json.NewDecoder(r.Body).Decode(&payload)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "could not parse body")
+		return
+	}
+	r.Body.Close()
+
+	if payload.Collectable.Name == "" {
+		serveAPIErr(w, errMissingField, http.StatusBadRequest, "Name cannot be empty")
+		return
+	}
+
+	if payload.Collectable.Author.ID == "" {
+		serveAPIErr(w, errMissingField, http.StatusBadRequest, "Author.ID cannot be empty")
+		return
+	}
+
+	authorID, err := strconv.Atoi(payload.Collectable.Author.ID)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "Author.ID is not parseable")
+		return
+	}
+
+	if !slices.Contains(rarities, payload.Collectable.Rarity) {
+		serveAPIErr(w, errMissingField, http.StatusBadRequest, "Rarity is unknown")
+		return
+	}
+
+	if payload.Collectable.ImagePath == "" {
+		serveAPIErr(w, errMissingField, http.StatusBadRequest, "ImagePath cannot be empty")
+		return
+	}
+
+	created, err := s.db.CreateKnifeType(ctx, &db.KnifeType{
+		Name:      payload.Collectable.Name,
+		AuthorID:  authorID,
+		Rarity:    payload.Collectable.Rarity,
+		ImageName: payload.Collectable.ImagePath,
+	})
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "could not create collectable")
+		return
+	}
+
+	c, err := s.db.ApproveKnifeType(ctx, created.ID, u.ID)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "unable to get collectable")
+		return
+	}
+
+	serveAPIPayload(w, struct {
+		Collectable AdminCollectable
+	}{
+		Collectable: AdminCollectableFromDBKnifeType(c),
+	})
 }
 
 func (s *Server) adminDeleteCollectable(w http.ResponseWriter, r *http.Request) {
@@ -669,7 +813,23 @@ func (s *Server) adminDeleteCollectable(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
+	vars := mux.Vars(r)
+
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "id is not numeric")
+		return
+	}
+
+	err = s.db.DeleteKnifeType(ctx, &db.KnifeType{
+		ID: id,
+	})
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "could not delete knife")
+		return
+	}
+
+	serveAPIPayload(w, true)
 }
 
 func (s *Server) adminUpdateCollectable(w http.ResponseWriter, r *http.Request) {
@@ -686,7 +846,65 @@ func (s *Server) adminUpdateCollectable(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
+	vars := mux.Vars(r)
+
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "id is not numeric")
+		return
+	}
+
+	var payload CollectablePayload
+	err = json.NewDecoder(r.Body).Decode(&payload)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "could not parse body")
+		return
+	}
+	r.Body.Close()
+
+	if payload.Collectable.Name == "" {
+		serveAPIErr(w, errMissingField, http.StatusBadRequest, "Name cannot be empty")
+		return
+	}
+
+	if payload.Collectable.Author.ID == "" {
+		serveAPIErr(w, errMissingField, http.StatusBadRequest, "Author.ID cannot be empty")
+		return
+	}
+
+	authorID, err := strconv.Atoi(payload.Collectable.Author.ID)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "Author.ID is not parseable")
+		return
+	}
+
+	if !slices.Contains(rarities, payload.Collectable.Rarity) {
+		serveAPIErr(w, errMissingField, http.StatusBadRequest, "Rarity is unknown")
+		return
+	}
+
+	if payload.Collectable.ImagePath == "" {
+		serveAPIErr(w, errMissingField, http.StatusBadRequest, "ImagePath cannot be empty")
+		return
+	}
+
+	created, err := s.db.UpdateKnifeType(ctx, &db.KnifeType{
+		ID:        id,
+		Name:      payload.Collectable.Name,
+		AuthorID:  authorID,
+		Rarity:    payload.Collectable.Rarity,
+		ImageName: payload.Collectable.ImagePath,
+	})
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "could not create collectable")
+		return
+	}
+
+	serveAPIPayload(w, struct {
+		Collectable AdminCollectable
+	}{
+		Collectable: AdminCollectableFromDBKnifeType(created),
+	})
 }
 
 func (s *Server) adminIssueCollectable(w http.ResponseWriter, r *http.Request) {
@@ -741,7 +959,17 @@ func (s *Server) adminGetIssueConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
+	pullWeight, err := s.db.GetWeights(ctx)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "")
+	}
+
+	res := make(map[string]int)
+	for _, w := range pullWeight {
+		res[w.Rarity] = w.Weight
+	}
+
+	serveAPIPayload(w, IssuedConfig{Weights: res})
 }
 
 func (s *Server) adminUpdateIssueConfig(w http.ResponseWriter, r *http.Request) {
@@ -916,7 +1144,44 @@ func (s *Server) adminGetCollectable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := s.db.GetKnifeType(ctx, id, true)
+	c, err := s.db.GetKnifeType(ctx, id, true, true)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "unable to get collectable")
+		return
+	}
+
+	serveAPIPayload(
+		w,
+		&struct {
+			Collectable AdminCollectable
+		}{
+			Collectable: AdminCollectableFromDBKnifeType(c),
+		},
+	)
+}
+
+func (s *Server) adminApproveCollectable(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	u, err := s.getAuthUser(ctx, r)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
+		return
+	}
+
+	if !u.Admin {
+		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
+		return
+	}
+
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		serveAPIErr(w, err, http.StatusBadRequest, "id is non numeric")
+		return
+	}
+
+	c, err := s.db.ApproveKnifeType(ctx, id, u.ID)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusInternalServerError, "unable to get collectable")
 		return

@@ -89,11 +89,15 @@ func (m *MockDB) GetCollection(ctx context.Context, getDeleted bool) ([]*KnifeTy
 	return nil, nil
 }
 
+func (m *MockDB) GetPendingKnives(ctx context.Context) ([]*KnifeType, error) {
+	return nil, nil
+}
+
 func (m *MockDB) GetKnifeTypesByRarity(ctx context.Context, rarity string) ([]*KnifeType, error) {
 	return nil, nil
 }
 
-func (m *MockDB) GetKnifeType(ctx context.Context, id int, getDeleted bool) (*KnifeType, error) {
+func (m *MockDB) GetKnifeType(ctx context.Context, id int, getDeleted bool, getUnapproved bool) (*KnifeType, error) {
 	res := &KnifeType{}
 	faker.FakeData(&res)
 	return res, nil
@@ -138,5 +142,9 @@ func (m *MockDB) SetWeights(ctx context.Context, weights []*PullWeight) ([]*Pull
 }
 
 func (m *MockDB) IssueCollectable(ctx context.Context, collectableID int, userID int, subscriber bool, verified bool, editionID int, source string) (*Knife, error) {
+	return nil, ErrNoWrites
+}
+
+func (m *MockDB) ApproveKnifeType(ctx context.Context, id int, userID int) (*KnifeType, error) {
 	return nil, ErrNoWrites
 }
