@@ -37,12 +37,13 @@ If you just want to work on the presentation you can run the webapp in standalon
 
  - [x] Rethink templating pretty completely (move to js front end)
  - [ ] Fix embedding, titles and metadata returned by server
- - [ ] Server side pulling
+ - [x] Server side pulling
    - [ ] Animations for pull in webapp
  - [ ] Live "Latest"
- - [ ] Admin Pages Moved to JS App
- - [ ] Allow logged in subscribers to upload knives direct to site pending approval
+ - [x] Admin Pages Moved to JS App
+ - [x] Allow logged in subscribers to upload knives direct to site pending approval
  - [x] Allow logged in users to "equip" a knife
+ - [ ] Local Dev database that isn't garbage
 
 ###  Exploration Ideas
 
