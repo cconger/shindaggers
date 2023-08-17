@@ -5,16 +5,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"sync"
+	"time"
 )
 
 type Client struct {
 	Client       *http.Client
 	ClientID     string
 	ClientSecret string
+
+	atlock   sync.Mutex
+	AppToken *GetTokenResponse
 }
 
 func NewClient(clientID string, clientSecret string) (*Client, error) {
@@ -51,6 +57,28 @@ type GetTokenResponse struct {
 	RefreshToken string   `json:"refresh_token"`
 	Scope        []string `json:"scope"`
 	TokenType    string   `json:"token_type"`
+}
+
+var refreshT = time.Now()
+
+func (c *Client) GetOrRefreshAppToken(ctx context.Context) (string, error) {
+	c.atlock.Lock()
+	defer c.atlock.Unlock()
+	if time.Since(refreshT) > 0 {
+		log.Print("2 hours since last token")
+		c.AppToken = nil
+	}
+	if c.AppToken == nil {
+		log.Print("getting new token")
+		t, err := c.GetAppToken(ctx)
+		if err != nil {
+			log.Print("error refreshing token")
+			return "", err
+		}
+		refreshT = time.Now().Add(2 * time.Hour)
+		c.AppToken = t
+	}
+	return c.AppToken.AccessToken, nil
 }
 
 func (c *Client) GetAppToken(ctx context.Context) (*GetTokenResponse, error) {
@@ -148,6 +176,46 @@ func (c *Client) GetUsersByLogin(ctx context.Context, token string, login ...str
 	}
 
 	resp, err := c.Client.Do(c.authHeaders(r, token))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var payload TwitchUserPayload
+	err = json.NewDecoder(resp.Body).Decode(&payload)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(payload.Data) < 1 {
+		return nil, fmt.Errorf("no results")
+	}
+
+	return payload.Data, nil
+}
+
+func (c *Client) GetUsersByID(ctx context.Context, id ...string) ([]*TwitchUser, error) {
+	u, err := url.Parse("https://api.twitch.tv/helix/users")
+	if err != nil {
+		return nil, err
+	}
+
+	params := url.Values{
+		"id": id,
+	}
+	u.RawQuery = params.Encode()
+
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := c.GetOrRefreshAppToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.Do(c.authHeaders(r, t))
 	if err != nil {
 		return nil, err
 	}

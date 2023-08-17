@@ -91,6 +91,7 @@ func main() {
 		log.Println("Developer mode enabled! templates reloaded on every request")
 	}
 
+	discordWebhook := os.Getenv("DISCORD_WEBHOOK")
 	clientID := os.Getenv("TWITCH_CLIENT_ID")
 	clientSecret := os.Getenv("TWITCH_SECRET")
 	webhookSecret := os.Getenv("WEBHOOK_SECRET")
@@ -158,6 +159,7 @@ func main() {
 		minioClient:    blobClient,
 		bucketName:     "sd-images",
 		idGenerator:    node,
+		discordWebhook: discordWebhook,
 
 		baseURL: baseURL,
 	}
@@ -218,6 +220,7 @@ func main() {
 
 	// AuthorizeChannel // For setting the channel that we check for sub to
 
+	r.HandleFunc("/overlay/{id}", s.overlayHandler).Methods(http.MethodGet)
 	r.PathPrefix("/assets").HandlerFunc(s.assetHandler)
 	r.PathPrefix("/").HandlerFunc(s.spaHandler)
 

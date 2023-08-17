@@ -9,7 +9,7 @@ type MiniCardProps = {
   collectable: Collectable;
 }
 
-const MiniCard: Component<MiniCardProps> = (props) => {
+export const MiniCard: Component<MiniCardProps> = (props) => {
   const { collectable } = props;
 
   const imageURL = "https://images.shindaggers.io/images/" + collectable.image_path;
@@ -44,5 +44,3 @@ const MiniCard: Component<MiniCardProps> = (props) => {
     </div>
   );
 };
-
-export default MiniCard;

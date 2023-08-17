@@ -491,26 +491,41 @@ func (sd *SDDB) CreateUser(ctx context.Context, user *User) (*User, error) {
 
 	var query *sql.Stmt
 	var err error
+	var res sql.Result
 	if user.TwitchID != "" {
 		query, err = sd.db.Prepare(createUserQuery)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = query.ExecContext(ctx, user.Name, lookupName, user.TwitchID)
+		res, err = query.ExecContext(ctx, user.Name, lookupName, user.TwitchID)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		query, err = sd.db.Prepare(createUserByNameQuery)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = query.ExecContext(ctx, user.Name, lookupName)
+		res, err = query.ExecContext(ctx, user.Name, lookupName)
+		if err != nil {
+			return nil, err
+		}
 	}
+	id, err := res.LastInsertId()
 	if err != nil {
 		return nil, err
 	}
 
-	return sd.GetUserByUsername(ctx, lookupName)
+	return &User{
+		ID:         int(id),
+		Name:       user.Name,
+		LookupName: lookupName,
+		TwitchID:   user.TwitchID,
+		Admin:      false,
+		CreatedAt:  time.Now(),
+	}, nil
 }
 
 var (
@@ -865,8 +880,7 @@ FROM knives
 LEFT JOIN users author ON knives.author_id = author.id
 WHERE knives.rarity = ?
 AND knives.deleted = false
-AND knives.approved_by is not null
-LIMIT 1;
+AND knives.approved_by is not null;
 `
 
 func (sd *SDDB) GetKnifeTypesByRarity(ctx context.Context, rarity string) ([]*KnifeType, error) {

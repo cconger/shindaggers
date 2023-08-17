@@ -1,7 +1,7 @@
 import type { Component } from 'solid-js';
 import { For, createResource, Switch, Match } from 'solid-js';
 import { A } from '@solidjs/router';
-import MiniCard from './MiniCard';
+import { MiniCard } from './MiniCard';
 import './Catalog.css';
 import type { Collectable } from './resources';
 

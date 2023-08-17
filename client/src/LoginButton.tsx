@@ -1,6 +1,6 @@
-import type { Component, Setter, Accessor, Resource } from 'solid-js';
+import type { Component, Setter, Accessor, Resource, JSX } from 'solid-js';
 import { A, Navigate } from '@solidjs/router';
-import { Switch, Match } from 'solid-js';
+import { Show, Switch, Match } from 'solid-js';
 import { createSignal, createResource, createEffect } from 'solid-js';
 
 import type { User } from './resources';
@@ -22,7 +22,7 @@ const fetchUser = async (token: string | null): Promise<User | null> => {
       'Authorization': token,
     },
   });
-  if (response.status === 403) {
+  if (response.status === 403 || response.status === 404) {
     // Your token is no good...
     useAuthManager().setToken(null);
     return null
@@ -63,7 +63,7 @@ export const useAuthManager = () => {
   return am;
 }
 
-export const NavLogin: Component = (props) => {
+export const NavLogin: Component = () => {
   let am = useAuthManager();
 
   return (
@@ -82,7 +82,17 @@ export const NavLogin: Component = (props) => {
   )
 }
 
-export const LoginButton: Component = (props) => {
+export const IfLoggedIn: Component<{ children: JSX.Element }> = (props) => {
+  let am = useAuthManager();
+
+  return (
+    <Show when={am.token()}>
+      {props.children}
+    </Show>
+  );
+}
+
+export const LoginButton: Component = () => {
   let am = useAuthManager();
 
   return (
@@ -112,7 +122,7 @@ export const LoginButton: Component = (props) => {
   )
 }
 
-export const LoginLander: Component = (props) => {
+export const LoginLander: Component = () => {
   let am = useAuthManager();
 
   let url = new URL(window.location.href);

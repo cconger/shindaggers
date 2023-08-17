@@ -1023,16 +1023,23 @@ func (s *Server) RandomPullHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 
-			twuser, err := s.twitchClient.GetUser(ctx, reqBody.TwitchID)
-			if err != nil {
+			twusers, nerr := s.twitchClient.GetUsersByID(ctx, reqBody.TwitchID)
+			if nerr != nil {
 				serveAPIErr(w, err, http.StatusInternalServerError, "unable to get user from twitch")
 				return
 			}
 
-			user, err = s.db.CreateUser(ctx, &db.User{
+			if len(twusers) < 1 {
+				serveAPIErr(w, fmt.Errorf("wtf"), http.StatusInternalServerError, "unable to get user from twitch")
+				return
+			}
+			twuser := twusers[0]
+
+			user, nerr = s.db.CreateUser(ctx, &db.User{
 				TwitchID: twuser.ID,
 				Name:     twuser.DisplayName,
 			})
+			err = nerr
 		}
 		if err != nil {
 			serveAPIErr(w, err, http.StatusInternalServerError, "unexpected error")

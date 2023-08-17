@@ -5,6 +5,7 @@ import { Motion } from '@motionone/solid';
 import { LoginButton } from './LoginButton';
 import type { IssuedCollectable } from './resources';
 import { rarityclass } from './resources';
+import { UserSearch } from './Admin';
 
 import './Home.css';
 
@@ -80,8 +81,7 @@ export const Home: Component = (props) => {
         <div>
           <h3>Lookup a collection:</h3>
           <div class="input-button">
-            <input onKeyPress={handleKeyPress} onInput={(e) => setSearch(e.target.value)} placeholder="username" />
-            <div onClick={lookup} class="button">Search</div>
+            <UserSearch placeholder="username" onUserSelected={(u) => { u !== null && navigate(`/user/${u.id}`) }} />
           </div>
         </div>
 

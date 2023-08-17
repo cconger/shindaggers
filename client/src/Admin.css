@@ -23,12 +23,12 @@
   align-items: baseline;
 }
 
-.form .input-button {
+.input-button {
   position: relative;
   margin: 10px 0;
 }
 
-.form .input-button .results {
+.input-button .results {
   position: absolute;
   bottom: 50px;
   left: 10px;
@@ -36,16 +36,16 @@
   border: solid thin black;
 }
 
-.form .input-button .results {
+.input-button .results {
   font-size: 20px;
   padding: 0;
 }
 
-.form .input-button .results div {
+.input-button .results div {
   padding: 5px 10px;
 }
 
-.form .input-button .results div:hover {
+.input-button .results div:hover {
   padding: 5px 10px;
   background: rgb(180, 180, 188);
   cursor: pointer;

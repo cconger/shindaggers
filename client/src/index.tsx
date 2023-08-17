@@ -7,7 +7,7 @@ import { Catalog } from './Catalog';
 import { CatalogCard } from './CatalogCard';
 import { Home } from './Home';
 import { Pull } from './Pull';
-import { NavLogin, LoginLander } from './LoginButton';
+import { IfLoggedIn, NavLogin, LoginLander } from './LoginButton';
 import { UserCollection } from './User';
 import { ButtonTest } from './Button';
 import { AdminWrapper, AdminPage, AdminKnife } from './Admin';
@@ -28,6 +28,9 @@ render(() => (
       <nav class="pages">
         <A href="/">Shindaggers</A>
         <A href="/catalog">Catalog</A>
+        <IfLoggedIn>
+          <A href="/creator">Create</A>
+        </IfLoggedIn>
       </nav>
       <nav class="panel">
         <NavLogin />

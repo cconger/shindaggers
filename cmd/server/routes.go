@@ -32,6 +32,7 @@ const AUTH_COOKIE = "auth"
 type twitchClient interface {
 	OAuthGetToken(context.Context, string, string) (*twitch.GetTokenResponse, error)
 	GetUser(context.Context, string) (*twitch.TwitchUser, error)
+	GetUsersByID(context.Context, ...string) ([]*twitch.TwitchUser, error)
 }
 
 type blobClient interface {
@@ -97,6 +98,7 @@ type Server struct {
 	minioClient    blobClient
 	bucketName     string
 	idGenerator    *snowflake.Node
+	discordWebhook string
 
 	template *template.Template
 }

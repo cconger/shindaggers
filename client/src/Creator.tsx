@@ -10,9 +10,9 @@ export const Creator: Component = () => {
 
   return (
     <section class="admin-page">
-      <h2>You think you're a bad enough dude to make your own knife?</h2>
-      <h3>Prove it</h3>
       <RequireLogin fallback={<h1>You gotta be logged in to create</h1>}>
+        <h2>You think you're a bad enough dude to make your own knife?</h2>
+        <h3>Prove it</h3>
         <CreatorForm user={am.user()!} />
       </RequireLogin>
     </section>

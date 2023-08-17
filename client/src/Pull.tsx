@@ -11,7 +11,7 @@ import './Pull.css';
 type PullProps = {
 }
 
-const fetchIssuedCollectable = async (id: string): Promise<IssuedCollectable> => {
+export const fetchIssuedCollectable = async (id: string): Promise<IssuedCollectable> => {
   let response = await fetch("/api/issued/" + id)
   if (response.status === 404) {
     throw new Error("IssuedCollectable does not exist")

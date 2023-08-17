@@ -14,3 +14,7 @@ func (m *MockClient) OAuthGetToken(ctx context.Context, code string, redirectURI
 func (m *MockClient) GetUser(ctx context.Context, token string) (*TwitchUser, error) {
 	return nil, fmt.Errorf("cannot lookup users with mock twitch client")
 }
+
+func (m *MockClient) GetUsersByID(ctx context.Context, users ...string) ([]*TwitchUser, error) {
+	return nil, fmt.Errorf("cannot lookup users with mock twitch client")
+}
