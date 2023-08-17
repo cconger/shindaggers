@@ -4,3 +4,4 @@
 /shindaggers
 /client/node_modules
 /cmd/server/client/*
+/logs
