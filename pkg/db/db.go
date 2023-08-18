@@ -65,6 +65,13 @@ type PullWeight struct {
 	UpdatedAt   time.Time
 }
 
+type CombatReport struct {
+	ID           int64
+	Participants []int64
+	Outcomes     []int
+	CreatedAt    time.Time
+}
+
 type KnifeDB interface {
 	GetLatestPulls(ctx context.Context) ([]*Knife, error)
 	GetKnife(ctx context.Context, knifeID int) (*Knife, error)
@@ -107,6 +114,10 @@ type KnifeDB interface {
 	// Twitch Auth
 	GetAuth(ctx context.Context, token []byte) (*UserAuth, error)
 	SaveAuth(ctx context.Context, auth *UserAuth) (*UserAuth, error)
+
+	// Combat Reports
+	GetCombatReport(ctx context.Context, id int64) (*CombatReport, error)
+	CreateCombatReport(ctx context.Context, report *CombatReport) (*CombatReport, error)
 
 	Close(context.Context) error
 }

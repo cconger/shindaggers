@@ -239,10 +239,9 @@ func main() {
 	// Image Upload
 	r.HandleFunc("/api/image", s.ImageUpload).Methods(http.MethodPost)
 
-	r.HandleFunc("/api/test", s.Test).Methods(http.MethodGet)
+	r.HandleFunc("/api/combat/report", s.CombatReportHandler).Methods(http.MethodPost)
 
-	// AuthorizeChannel // For setting the channel that we check for sub to
-
+	// Overlay is a mini SPA for OBS
 	r.HandleFunc("/overlay/{id}", s.overlayHandler).Methods(http.MethodGet)
 	r.PathPrefix("/assets").HandlerFunc(s.assetHandler)
 	r.PathPrefix("/").HandlerFunc(s.spaHandler)

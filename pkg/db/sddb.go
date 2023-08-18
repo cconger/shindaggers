@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -1308,4 +1309,79 @@ func (sd *SDDB) ApproveKnifeType(ctx context.Context, id int, userID int) (*Knif
 	}
 
 	return sd.GetKnifeType(ctx, id, true, true)
+}
+
+var getCombatReportQuery = `
+SELECT
+  id,
+  participants,
+  outcomes,
+  created_at
+FROM fights
+WHERE id = ?;
+`
+
+func (sd *SDDB) GetCombatReport(ctx context.Context, id int64) (*CombatReport, error) {
+	q, err := sd.db.PrepareContext(ctx, getCombatReportQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	var report CombatReport
+	var createdAt string
+	var participants string
+	var outcomes string
+
+	err = q.QueryRowContext(ctx, id).Scan(
+		&report.ID,
+		&participants,
+		&outcomes,
+		&createdAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal([]byte(participants), &report.Participants)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal([]byte(outcomes), &report.Outcomes)
+	if err != nil {
+		return nil, err
+	}
+
+	report.CreatedAt, err = parseTimestamp(createdAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &report, nil
+}
+
+var insertCombatReportQuery = `
+INSERT INTO fights (id, participants, outcomes) VALUES (?, ?, ?);
+`
+
+func (sd *SDDB) CreateCombatReport(ctx context.Context, report *CombatReport) (*CombatReport, error) {
+	q, err := sd.db.PrepareContext(ctx, insertCombatReportQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	participants, err := json.Marshal(report.Participants)
+	if err != nil {
+		return nil, fmt.Errorf("encoding participants: %w", err)
+	}
+	outcomes, err := json.Marshal(report.Outcomes)
+	if err != nil {
+		return nil, fmt.Errorf("encoding outcomes: %w", err)
+	}
+
+	_, err = q.ExecContext(ctx, report.ID, participants, outcomes)
+	if err != nil {
+		return nil, err
+	}
+
+	return sd.GetCombatReport(ctx, report.ID)
 }

@@ -148,3 +148,11 @@ func (m *MockDB) IssueCollectable(ctx context.Context, collectableID int, userID
 func (m *MockDB) ApproveKnifeType(ctx context.Context, id int, userID int) (*KnifeType, error) {
 	return nil, ErrNoWrites
 }
+
+func (m *MockDB) GetCombatReport(ctx context.Context, id int64) (*CombatReport, error) {
+	return nil, ErrNotFound
+}
+
+func (m *MockDB) CreateCombatReport(ctx context.Context, report *CombatReport) (*CombatReport, error) {
+	return nil, ErrNoWrites
+}

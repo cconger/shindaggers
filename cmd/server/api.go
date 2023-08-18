@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"math/rand"
 	"net/http"
@@ -439,8 +441,19 @@ func (s *Server) getEquippedForUser(w http.ResponseWriter, r *http.Request) {
 		serveAPIErr(w, err, http.StatusInternalServerError, "Unable to fetch equipped knife")
 		return
 	}
+
 	var equipped *IssuedCollectable
-	if eqRaw != nil {
+	var randomlypicked bool
+	if eqRaw == nil {
+		raw, err := s.db.GetKnivesForUsername(ctx, user.LookupName)
+		if err != nil {
+			slog.Error("unable to get knives for user", "err", err, "user.id", user.ID)
+		} else {
+			eq := IssuedCollectableFromDBKnife(raw[rand.Intn(len(raw))])
+			equipped = &eq
+			randomlypicked = true
+		}
+	} else {
 		eq := IssuedCollectableFromDBKnife(eqRaw)
 		equipped = &eq
 	}
@@ -448,14 +461,16 @@ func (s *Server) getEquippedForUser(w http.ResponseWriter, r *http.Request) {
 	serveAPIPayload(
 		w,
 		&struct {
-			User     User
-			Equipped *IssuedCollectable
+			User           User
+			Equipped       *IssuedCollectable
+			RandomlyPicked bool
 		}{
 			User: User{
 				ID:   strconv.Itoa(user.ID),
 				Name: user.Name,
 			},
-			Equipped: equipped,
+			Equipped:       equipped,
+			RandomlyPicked: randomlypicked,
 		},
 	)
 }
@@ -1226,4 +1241,81 @@ func (s *Server) adminApproveCollectable(w http.ResponseWriter, r *http.Request)
 			Collectable: AdminCollectableFromDBKnifeType(c),
 		},
 	)
+}
+
+type FightReport struct {
+	Players  []string `json:"players"`
+	Outcomes []int    `json:"outcomes"`
+	DryRun   bool     `json:"dry_run"`
+}
+
+func (s *Server) CombatReportHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	u, err := s.getAuthUser(ctx, r)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
+		return
+	}
+
+	if !u.Admin {
+		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
+		return
+	}
+
+	var report FightReport
+
+	var b bytes.Buffer
+	wrappedReader := io.TeeReader(r.Body, &b)
+	err = json.NewDecoder(wrappedReader).Decode(&report)
+	if err != nil {
+		slog.Error("error parsing payload", "payload", b.String())
+		serveAPIErr(w, err, http.StatusBadRequest, "error parsing "+err.Error())
+		return
+	}
+
+	slog.Warn("got report", "report", report)
+
+	if len(report.Players) != len(report.Outcomes) {
+		serveAPIErr(
+			w,
+			fmt.Errorf("players and outcomes must be the same length"),
+			http.StatusBadRequest,
+			"players and outcomes must be the same length",
+		)
+		return
+	}
+
+	ids := make([]int64, len(report.Players))
+
+	for idx, id := range report.Players {
+		user, err := s.getUserByUserID(ctx, ParseUserID(id))
+		if err != nil {
+			serveAPIErr(w, err, http.StatusInternalServerError, "unable to resolve user: "+id)
+			return
+		}
+		ids[idx] = int64(user.ID)
+	}
+
+	outReport := &db.CombatReport{
+		ID:           s.idGenerator.Generate().Int64(),
+		Participants: ids,
+		Outcomes:     report.Outcomes,
+	}
+
+	if !report.DryRun {
+		outReport, err = s.db.CreateCombatReport(ctx, outReport)
+		if err != nil {
+			serveAPIErr(w, err, http.StatusInternalServerError, "unable to create report")
+			return
+		}
+	} else {
+		outReport.CreatedAt = time.Now()
+	}
+
+	serveAPIPayload(w, struct {
+		Report *db.CombatReport
+	}{
+		Report: outReport,
+	})
 }
