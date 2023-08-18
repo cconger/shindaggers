@@ -2,7 +2,11 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
 	"flag"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -22,6 +26,16 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
+type blobClient interface {
+	PutObject(context.Context, string, string, io.Reader, int64, minio.PutObjectOptions) (minio.UploadInfo, error)
+}
+
+type mockBlobClient struct{}
+
+func (m *mockBlobClient) PutObject(ctx context.Context, bucket string, file string, contents io.Reader, size int64, options minio.PutObjectOptions) (minio.UploadInfo, error) {
+	return minio.UploadInfo{}, fmt.Errorf("cannot upload files in dev mode")
+}
+
 type UserID struct {
 	TwitchID   string
 	InternalID int
@@ -38,6 +52,17 @@ func (id *UserID) IsInternal() bool {
 
 func (id *UserID) IsName() bool {
 	return id.Name != ""
+}
+
+func createAuthToken() ([]byte, error) {
+	// Secure random => sha256
+	entropy := make([]byte, 100)
+	_, err := rand.Read(entropy)
+	if err != nil {
+		return nil, err
+	}
+	token := sha256.Sum256(entropy)
+	return token[:], nil
 }
 
 func ParseUserID(str string) UserID {
@@ -87,10 +112,6 @@ func main() {
 	isolated := flag.Bool("nodb", false, "enable the application to use mock intefaces to dependencies, allows you to develop without having access to other services")
 	flag.Parse()
 
-	if *devMode {
-		log.Println("Developer mode enabled! templates reloaded on every request")
-	}
-
 	discordWebhook := os.Getenv("DISCORD_WEBHOOK")
 	clientID := os.Getenv("TWITCH_CLIENT_ID")
 	clientSecret := os.Getenv("TWITCH_SECRET")
@@ -101,7 +122,7 @@ func main() {
 	}
 
 	var blobClient blobClient
-	var twitchClient twitchClient
+	var twitchClient twitch.TwitchClient
 	var dbClient db.KnifeDB
 	var err error
 
@@ -217,6 +238,8 @@ func main() {
 
 	// Image Upload
 	r.HandleFunc("/api/image", s.ImageUpload).Methods(http.MethodPost)
+
+	r.HandleFunc("/api/test", s.Test).Methods(http.MethodGet)
 
 	// AuthorizeChannel // For setting the channel that we check for sub to
 

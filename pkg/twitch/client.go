@@ -3,24 +3,105 @@ package twitch
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
-	"time"
 )
+
+var (
+	errForbidden     = errors.New("forbidden")
+	errCannotRefresh = errors.New("cannot refresh")
+)
+
+type TwitchClient interface {
+	OAuthGetToken(context.Context, string, string) (*GetTokenResponse, error)
+	GetUsersByID(context.Context, ...string) ([]*TwitchUser, error)
+	UserClient(*UserAuth) UserClient
+}
+
+type UserClient interface {
+	GetUser(context.Context) (*TwitchUser, error)
+}
 
 type Client struct {
 	Client       *http.Client
 	ClientID     string
 	ClientSecret string
 
-	atlock   sync.Mutex
-	AppToken *GetTokenResponse
+	auth AuthProvider
+}
+
+type AuthProvider interface {
+	Token() (string, error)
+	Refresh()
+}
+
+type AppAuth struct {
+	ID     string
+	Secret string
+
+	once sync.Once
+	t    string
+}
+
+func (a *AppAuth) Token() (string, error) {
+	var err error
+	a.once.Do(func() {
+		a.t, err = a.getToken()
+		if err != nil {
+			slog.Error("getting appToken", "err", err)
+			a.once = sync.Once{}
+		}
+	})
+	return a.t, err
+}
+
+func (a *AppAuth) getToken() (string, error) {
+	slog.Info("getting appToken")
+	params := url.Values{}
+	params.Add("client_id", a.ID)
+	params.Add("client_secret", a.Secret)
+	params.Add("grant_type", "client_credentials")
+
+	req, err := http.NewRequest(http.MethodPost, "https://id.twitch.tv/oauth2/token", strings.NewReader(params.Encode()))
+	if err != nil {
+		return "", fmt.Errorf("creating oauth request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("post oauth request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var tokenResp GetTokenResponse
+	err = json.NewDecoder(resp.Body).Decode(&tokenResp)
+	if err != nil {
+		return "", fmt.Errorf("deserializing oauth: %w", err)
+	}
+
+	return tokenResp.AccessToken, nil
+}
+
+func (a *AppAuth) Refresh() {
+	a.once = sync.Once{}
+}
+
+type UserAuth struct {
+	AccessToken  string
+	RefreshToken string
+}
+
+func (ua *UserAuth) Token() (string, error) {
+	return ua.AccessToken, nil
+}
+
+func (ua *UserAuth) Refresh() {
+	slog.Warn("refreshing user token not implemented")
 }
 
 func NewClient(clientID string, clientSecret string) (*Client, error) {
@@ -33,21 +114,47 @@ func NewClient(clientID string, clientSecret string) (*Client, error) {
 	}
 
 	return &Client{
-		// TODO: More sane default
 		Client:       &http.Client{},
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
+		auth: &AppAuth{
+			ID:     clientID,
+			Secret: clientSecret,
+		},
 	}, nil
 }
 
-// debugBody can wrap a resp.Body reader for debugging a payload before it enters a JSON decoder
-func debugBody(r io.Reader) io.Reader {
-	return io.TeeReader(r, os.Stdout)
+func (c *Client) UserClient(ua *UserAuth) UserClient {
+	return &Client{
+		Client:       c.Client,
+		ClientID:     c.ClientID,
+		ClientSecret: c.ClientSecret,
+		auth:         ua,
+	}
 }
 
-func (c *Client) authHeaders(r *http.Request, token string) *http.Request {
-	r.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
-	r.Header.Add("Client-Id", c.ClientID)
+func (c *Client) do(req *http.Request) (*http.Response, error) {
+	token, err := c.auth.Token()
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Add("Client-Id", c.ClientID)
+
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return resp, err
+	}
+
+	if resp.StatusCode == http.StatusForbidden {
+		return resp, errForbidden
+	}
+
+	return resp, err
+}
+
+func (c *Client) authHeaders(r *http.Request) *http.Request {
 	return r
 }
 
@@ -59,57 +166,7 @@ type GetTokenResponse struct {
 	TokenType    string   `json:"token_type"`
 }
 
-var refreshT = time.Now()
-
-func (c *Client) GetOrRefreshAppToken(ctx context.Context) (string, error) {
-	c.atlock.Lock()
-	defer c.atlock.Unlock()
-	if time.Since(refreshT) > 0 {
-		log.Print("2 hours since last token")
-		c.AppToken = nil
-	}
-	if c.AppToken == nil {
-		log.Print("getting new token")
-		t, err := c.GetAppToken(ctx)
-		if err != nil {
-			log.Print("error refreshing token")
-			return "", err
-		}
-		refreshT = time.Now().Add(2 * time.Hour)
-		c.AppToken = t
-	}
-	return c.AppToken.AccessToken, nil
-}
-
-func (c *Client) GetAppToken(ctx context.Context) (*GetTokenResponse, error) {
-	params := url.Values{}
-	params.Add("client_id", c.ClientID)
-	params.Add("client_secret", c.ClientSecret)
-	params.Add("grant_type", "client_credentials")
-
-	req, err := http.NewRequest(http.MethodPost, "https://id.twitch.tv/oauth2/token", strings.NewReader(params.Encode()))
-	if err != nil {
-		return nil, fmt.Errorf("creating oauth request: %w", err)
-	}
-
-	resp, err := c.Client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("post oauth request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	var tokenResp GetTokenResponse
-	err = json.NewDecoder(resp.Body).Decode(&tokenResp)
-	if err != nil {
-		return nil, fmt.Errorf("deserializing oauth: %w", err)
-	}
-
-	return &tokenResp, nil
-}
-
 func (c *Client) OAuthGetToken(ctx context.Context, code string, redirectURI string) (*GetTokenResponse, error) {
-	// POST to https://id.twitch.tv/oauth2/token
-
 	payload := url.Values{
 		"client_id":     []string{c.ClientID},
 		"client_secret": []string{c.ClientSecret},
@@ -138,6 +195,43 @@ func (c *Client) OAuthGetToken(ctx context.Context, code string, redirectURI str
 	return &response, nil
 }
 
+func (c *Client) OAuthRefreshToken(ctx context.Context, ua *UserAuth) (*GetTokenResponse, error) {
+	payload := url.Values{
+		"client_id":     []string{c.ClientID},
+		"client_secret": []string{c.ClientSecret},
+		"grant_type":    []string{"refresh_token"},
+		"refresh_token": []string{ua.RefreshToken},
+	}
+
+	r, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		"https://id.twitch.tv/oauth2/token",
+		strings.NewReader(payload.Encode()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.Do(r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, errCannotRefresh
+	}
+
+	var response GetTokenResponse
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		return nil, err
+	}
+
+	return &response, nil
+}
+
 type TwitchUser struct {
 	ID          string `json:"id"`
 	Login       string `json:"login"`
@@ -148,8 +242,8 @@ type TwitchUserPayload struct {
 	Data []*TwitchUser `json:"data"`
 }
 
-func (c *Client) GetUser(ctx context.Context, token string) (*TwitchUser, error) {
-	users, err := c.GetUsersByLogin(ctx, token)
+func (c *Client) GetUser(ctx context.Context) (*TwitchUser, error) {
+	users, err := c.GetUsersByLogin(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +253,7 @@ func (c *Client) GetUser(ctx context.Context, token string) (*TwitchUser, error)
 	return users[0], err
 }
 
-func (c *Client) GetUsersByLogin(ctx context.Context, token string, login ...string) ([]*TwitchUser, error) {
+func (c *Client) GetUsersByLogin(ctx context.Context, login ...string) ([]*TwitchUser, error) {
 	u, err := url.Parse("https://api.twitch.tv/helix/users")
 	if err != nil {
 		return nil, err
@@ -175,7 +269,7 @@ func (c *Client) GetUsersByLogin(ctx context.Context, token string, login ...str
 		return nil, err
 	}
 
-	resp, err := c.Client.Do(c.authHeaders(r, token))
+	resp, err := c.do(r)
 	if err != nil {
 		return nil, err
 	}
@@ -194,6 +288,7 @@ func (c *Client) GetUsersByLogin(ctx context.Context, token string, login ...str
 	return payload.Data, nil
 }
 
+// GetUsersByID retrieves the twitch users for the given twitch userids
 func (c *Client) GetUsersByID(ctx context.Context, id ...string) ([]*TwitchUser, error) {
 	u, err := url.Parse("https://api.twitch.tv/helix/users")
 	if err != nil {
@@ -210,12 +305,7 @@ func (c *Client) GetUsersByID(ctx context.Context, id ...string) ([]*TwitchUser,
 		return nil, err
 	}
 
-	t, err := c.GetOrRefreshAppToken(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.Client.Do(c.authHeaders(r, t))
+	resp, err := c.do(r)
 	if err != nil {
 		return nil, err
 	}

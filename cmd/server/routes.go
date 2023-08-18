@@ -1,17 +1,12 @@
 package main
 
 import (
-	"context"
-	"crypto/rand"
-	"crypto/sha256"
-	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
-	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
@@ -27,73 +22,12 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
-const AUTH_COOKIE = "auth"
-
-type twitchClient interface {
-	OAuthGetToken(context.Context, string, string) (*twitch.GetTokenResponse, error)
-	GetUser(context.Context, string) (*twitch.TwitchUser, error)
-	GetUsersByID(context.Context, ...string) ([]*twitch.TwitchUser, error)
-}
-
-type blobClient interface {
-	PutObject(context.Context, string, string, io.Reader, int64, minio.PutObjectOptions) (minio.UploadInfo, error)
-}
-
-type mockBlobClient struct{}
-
-func (m *mockBlobClient) PutObject(ctx context.Context, bucket string, file string, contents io.Reader, size int64, options minio.PutObjectOptions) (minio.UploadInfo, error) {
-	return minio.UploadInfo{}, fmt.Errorf("cannot upload files in dev mode")
-}
-
-type KnifePage struct {
-	db.Knife
-
-	RarityClass string
-}
-
-type UserPage struct{}
-
-func className(rarity string) string {
-	switch rarity {
-	case "Common":
-		return "rarity-common"
-	case "Uncommon":
-		return "rarity-uncommon"
-	case "Rare":
-		return "rarity-rare"
-	case "Super Rare":
-		return "rarity-super-rare"
-	case "Ultra Rare":
-		return "rarity-ultra-rare"
-	}
-	return "rarity-common"
-}
-
-func createAuthToken() ([]byte, error) {
-	// Secure random => sha256
-	entropy := make([]byte, 100)
-	_, err := rand.Read(entropy)
-	if err != nil {
-		return nil, err
-	}
-	token := sha256.Sum256(entropy)
-	return token[:], nil
-}
-
-//go:embed templates/*
-var templates embed.FS
-
-func servererr(w http.ResponseWriter, err error, errorCode int) {
-	w.WriteHeader(errorCode)
-	fmt.Fprintf(w, "Error: %s", err)
-}
-
 type Server struct {
 	devMode        bool
 	db             db.KnifeDB
 	webhookSecret  string
 	twitchClientID string
-	twitchClient   twitchClient
+	twitchClient   twitch.TwitchClient
 	baseURL        string
 	minioClient    blobClient
 	bucketName     string
@@ -101,207 +35,6 @@ type Server struct {
 	discordWebhook string
 
 	template *template.Template
-}
-
-func (s *Server) getTemplate() (*template.Template, error) {
-	if s.devMode {
-		return template.ParseGlob(path.Join("cmd", "server", "templates", "*"))
-	}
-
-	if s.template == nil {
-		t, err := template.ParseFS(templates, path.Join("templates", "*"))
-		if err != nil {
-			return nil, err
-		}
-		s.template = t
-	}
-
-	return s.template, nil
-}
-
-func (s *Server) renderTemplate(w http.ResponseWriter, name string, payload interface{}) {
-	t, err := s.getTemplate()
-	if err != nil {
-		servererr(w, err, http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	err = t.ExecuteTemplate(w, name, payload)
-	if err != nil {
-		log.Printf("err executing template %s: %s", name, err)
-	}
-}
-
-type PullListing struct {
-	InstanceID  int
-	Name        string
-	Owner       string
-	AbsTime     string
-	TimeAgo     string
-	ImageName   string
-	RarityClass string
-}
-
-type IndexPayload struct {
-	LoginURL string
-	Pulls    []*PullListing
-}
-
-func (s *Server) loginWithTwitchURL() string {
-	p := url.Values{
-		"response_type": []string{"code"},
-		"client_id":     []string{s.twitchClientID},
-		"redirect_uri":  []string{fmt.Sprintf("%s/oauth/redirect", s.baseURL)},
-		"scope":         []string{""},
-	}
-
-	return "https://id.twitch.tv/oauth2/authorize?" + p.Encode()
-}
-
-func (s *Server) IndexHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	knivesRes, err := s.db.GetLatestPulls(ctx)
-	if err != nil {
-		log.Printf("error getting latest pulls: %s", err)
-	}
-
-	pulls := make([]*PullListing, len(knivesRes))
-	for i, k := range knivesRes {
-		pulls[i] = &PullListing{
-			InstanceID:  k.InstanceID,
-			Name:        k.Name,
-			Owner:       k.Owner,
-			ImageName:   k.ImageName,
-			RarityClass: className(k.Rarity),
-			AbsTime:     k.ObtainedAt.String(),
-			TimeAgo:     timeAgo(k.ObtainedAt),
-		}
-	}
-
-	pl := IndexPayload{
-		LoginURL: s.loginWithTwitchURL(),
-		Pulls:    pulls,
-	}
-
-	s.renderTemplate(w, "index.html", pl)
-}
-
-func (s *Server) Me(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	user, err := s.getUserForRequest(ctx, r)
-	if err != nil {
-		servererr(w, fmt.Errorf("unable to determine who you are: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	http.Redirect(w, r, s.baseURL+"/user/"+user.LookupName, http.StatusFound)
-}
-
-func (s *Server) OAuthHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	params := r.URL.Query()
-	errored := params.Has("error")
-	if errored {
-		desc := params.Get("error_description")
-		log.Printf("OAUTH Error: %s", desc)
-		http.Redirect(w, r, s.baseURL, http.StatusFound)
-		return
-	}
-
-	// Use code to get access token
-	code := params.Get("code")
-	if code == "" {
-		log.Printf("code is empty")
-		http.Redirect(w, r, s.baseURL, http.StatusFound)
-		return
-	}
-
-	t, err := s.twitchClient.OAuthGetToken(
-		ctx,
-		code,
-		fmt.Sprintf("%s/oauth/redirect", s.baseURL),
-	)
-	if err != nil {
-		log.Printf("error getting oauthtoken: %s", err)
-		http.Redirect(w, r, s.baseURL, http.StatusFound)
-		return
-	}
-
-	expiresAt := time.Now().Add(time.Duration(t.ExpiresIn) * time.Second)
-
-	// Get user from twitch
-	twitchUser, err := s.twitchClient.GetUser(ctx, t.AccessToken)
-	if err != nil {
-		log.Printf("error getting twitch user %s", err)
-		http.Redirect(w, r, s.baseURL, http.StatusFound)
-		return
-	}
-
-	// Get or create user in our db
-	user, err := s.db.GetUserByTwitchID(ctx, twitchUser.ID)
-	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			user, err = s.db.CreateUser(ctx, &db.User{
-				Name:       twitchUser.DisplayName,
-				LookupName: twitchUser.Login,
-				TwitchID:   twitchUser.ID,
-			})
-			if err != nil {
-				log.Printf("error creating user %s", err)
-				http.Redirect(w, r, s.baseURL, http.StatusFound)
-				return
-			}
-		} else {
-			log.Printf("error getting user %s", err)
-			http.Redirect(w, r, s.baseURL, http.StatusFound)
-			return
-		}
-	}
-
-	token, err := createAuthToken()
-	if err != nil {
-		log.Printf("error creating auth token: %s", err)
-		http.Redirect(w, r, s.baseURL, http.StatusFound)
-		return
-	}
-
-	// Store access token and refresh token
-	_, err = s.db.SaveAuth(
-		ctx,
-		&db.UserAuth{
-			UserID:       user.ID,
-			Token:        token,
-			AccessToken:  t.AccessToken,
-			RefreshToken: t.RefreshToken,
-			ExpiresAt:    expiresAt,
-		},
-	)
-	if err != nil {
-		log.Printf("error saving auth token: %s", err)
-		http.Redirect(w, r, s.baseURL, http.StatusFound)
-		return
-	}
-
-	encodedToken := base64.RawStdEncoding.EncodeToString(token)
-
-	// Set user cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     AUTH_COOKIE,
-		Value:    encodedToken,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   !s.devMode,
-	})
-
-	// Redirect to user page
-	http.Redirect(
-		w,
-		r,
-		fmt.Sprintf("%s/user/%s", s.baseURL, user.LookupName),
-		http.StatusFound,
-	)
 }
 
 func (s *Server) LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -328,7 +61,7 @@ func (s *Server) LoginResponseHandler(w http.ResponseWriter, r *http.Request) {
 	errored := params.Has("error")
 	if errored {
 		desc := params.Get("error_description")
-		log.Printf("OAUTH Error: %s", desc)
+		slog.Error("oAuth error", "err", desc)
 		http.Redirect(w, r, s.baseURL, http.StatusFound)
 		return
 	}
@@ -336,7 +69,7 @@ func (s *Server) LoginResponseHandler(w http.ResponseWriter, r *http.Request) {
 	// Use code to get access token
 	code := params.Get("code")
 	if code == "" {
-		log.Printf("code is empty")
+		slog.Error("code is empty")
 		http.Redirect(w, r, s.baseURL, http.StatusFound)
 		return
 	}
@@ -347,7 +80,7 @@ func (s *Server) LoginResponseHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("%s/oauth/redirect", s.baseURL),
 	)
 	if err != nil {
-		log.Printf("error getting oauthtoken: %s", err)
+		slog.Error("getting oauthtoken", "err", err)
 		http.Redirect(w, r, s.baseURL, http.StatusFound)
 		return
 	}
@@ -355,9 +88,14 @@ func (s *Server) LoginResponseHandler(w http.ResponseWriter, r *http.Request) {
 	expiresAt := time.Now().Add(time.Duration(t.ExpiresIn) * time.Second)
 
 	// Get user from twitch
-	twitchUser, err := s.twitchClient.GetUser(ctx, t.AccessToken)
+	twitchClient := s.twitchClient.UserClient(&twitch.UserAuth{
+		AccessToken:  t.AccessToken,
+		RefreshToken: t.RefreshToken,
+	})
+
+	twitchUser, err := twitchClient.GetUser(ctx)
 	if err != nil {
-		log.Printf("error getting twitch user %s", err)
+		slog.Error("getting twitch user", "err", err)
 		http.Redirect(w, r, s.baseURL, http.StatusFound)
 		return
 	}
@@ -372,12 +110,12 @@ func (s *Server) LoginResponseHandler(w http.ResponseWriter, r *http.Request) {
 				TwitchID:   twitchUser.ID,
 			})
 			if err != nil {
-				log.Printf("error creating user %s", err)
+				slog.Error("creating user", "err", err)
 				http.Redirect(w, r, s.baseURL, http.StatusFound)
 				return
 			}
 		} else {
-			log.Printf("error getting user %s", err)
+			slog.Error("getting user", "err", err)
 			http.Redirect(w, r, s.baseURL, http.StatusFound)
 			return
 		}
@@ -385,7 +123,7 @@ func (s *Server) LoginResponseHandler(w http.ResponseWriter, r *http.Request) {
 
 	token, err := createAuthToken()
 	if err != nil {
-		log.Printf("error creating auth token: %s", err)
+		slog.Error("creating auth token", "err", err)
 		http.Redirect(w, r, s.baseURL, http.StatusFound)
 		return
 	}
@@ -402,20 +140,10 @@ func (s *Server) LoginResponseHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		log.Printf("error saving auth token: %s", err)
+		slog.Error("saving auth token", "err", err)
 		http.Redirect(w, r, s.baseURL, http.StatusFound)
 		return
 	}
-
-	// Set user cookie
-	cookieEncoding := base64.RawStdEncoding.EncodeToString(token)
-	http.SetCookie(w, &http.Cookie{
-		Name:     AUTH_COOKIE,
-		Value:    cookieEncoding,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   !s.devMode,
-	})
 
 	encodedToken := base64.URLEncoding.EncodeToString(token)
 
@@ -430,111 +158,6 @@ func (s *Server) LoginResponseHandler(w http.ResponseWriter, r *http.Request) {
 		baseURL+"/login#token="+encodedToken,
 		http.StatusFound,
 	)
-}
-
-type UserPagePayload struct {
-	User   *db.User
-	Knives []*KnifePage
-}
-
-func (s *Server) UserHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	vars := mux.Vars(r)
-
-	username := strings.ToLower(vars["id"])
-
-	userRes, err := s.db.GetUserByUsername(ctx, username)
-	if err != nil {
-		servererr(w, err, http.StatusBadRequest)
-		return
-	}
-
-	knivesRes, err := s.db.GetKnivesForUsername(ctx, username)
-	if err != nil {
-		servererr(w, err, http.StatusBadRequest)
-		return
-	}
-
-	knives := make([]*KnifePage, len(knivesRes))
-	for i, k := range knivesRes {
-		knives[i] = &KnifePage{
-			Knife:       *k,
-			RarityClass: className(k.Rarity),
-		}
-	}
-
-	payload := UserPagePayload{
-		User:   userRes,
-		Knives: knives,
-	}
-
-	s.renderTemplate(w, "user.html", payload)
-}
-
-func (s *Server) AdminIndex(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	knives, err := s.db.GetCollection(ctx, true)
-	if err != nil {
-		servererr(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	s.renderTemplate(w, "admin.html", struct {
-		Knives []*db.KnifeType
-	}{
-		Knives: knives,
-	})
-}
-
-func (s *Server) getUserForRequest(ctx context.Context, r *http.Request) (*db.User, error) {
-	cookie, err := r.Cookie(AUTH_COOKIE)
-	if err != nil {
-		return nil, err
-	}
-
-	t, err := base64.RawStdEncoding.DecodeString(cookie.Value)
-	if err != nil {
-		return nil, err
-	}
-
-	auth, err := s.db.GetAuth(ctx, t)
-	if err != nil {
-		return nil, err
-	}
-
-	user, err := s.db.GetUserByID(ctx, auth.UserID)
-	if err != nil {
-		return nil, err
-	}
-
-	return user, nil
-}
-
-func (s *Server) KnifeHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	vars := mux.Vars(r)
-
-	id, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		servererr(w, err, http.StatusBadRequest)
-		return
-	}
-
-	knife, err := s.db.GetKnife(ctx, id)
-	if err != nil {
-		servererr(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	payload := KnifePage{
-		Knife:       *knife,
-		RarityClass: className(knife.Rarity),
-	}
-
-	s.renderTemplate(w, "knife.html", payload)
 }
 
 type PullRequest struct {
@@ -567,13 +190,12 @@ func (s *Server) PullHandler(w http.ResponseWriter, r *http.Request) {
 	var reqBody PullRequest
 	err := json.NewDecoder(r.Body).Decode(&reqBody)
 	if err != nil {
-		log.Printf("error parsing body %s", err)
-		servererr(w, err, http.StatusBadRequest)
+		serveAPIErr(w, err, http.StatusBadRequest, "could not parse payload")
 		return
 	}
 	defer r.Body.Close()
 
-	log.Printf("Operating on %+v", reqBody)
+	slog.Info("PullHandler", "payload", reqBody)
 
 	var user *db.User
 	if reqBody.TwitchID != "" {
@@ -583,15 +205,15 @@ func (s *Server) PullHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
-			log.Printf("pullHandler creating user")
+			slog.Info("PullHandler creating user", "twitchid", reqBody.TwitchID, "username", reqBody.Username)
 			user, err = s.db.CreateUser(ctx, &db.User{
 				Name:     reqBody.Username,
 				TwitchID: reqBody.TwitchID,
 			})
 		}
 		if err != nil {
-			log.Printf("pullHandler getting user: %s", err)
-			servererr(w, err, http.StatusBadRequest)
+			slog.Error("PullHandler getting user", "err", err)
+			serveAPIErr(w, err, http.StatusBadRequest, "could not resolve user")
 			return
 		}
 	}
@@ -603,8 +225,7 @@ func (s *Server) PullHandler(w http.ResponseWriter, r *http.Request) {
 	if reqBody.Edition != "" {
 		edition, err = strconv.Atoi(reqBody.Edition)
 		if err != nil {
-			log.Printf("got edition %s and could not parse to number", reqBody.Edition)
-			servererr(w, fmt.Errorf("unprocessable edition %s: %w", reqBody.Edition, err), http.StatusBadRequest)
+			serveAPIErr(w, fmt.Errorf("unprocessable edition %s: %w", reqBody.Edition, err), http.StatusBadRequest, "bad edition")
 			return
 		}
 	}
@@ -612,85 +233,18 @@ func (s *Server) PullHandler(w http.ResponseWriter, r *http.Request) {
 	k, err := s.db.PullKnife(ctx, user.ID, reqBody.Knifename, subscriber, verified, edition)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "Unable to find either this knife or this user: %s", err)
+			serveAPIErr(w, err, http.StatusBadRequest, "could not find knife or user")
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Internal Server Error: %s", err)
+		serveAPIErr(w, err, http.StatusInternalServerError, "unexpected error")
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(k)
 	if err != nil {
-		log.Printf("error serializing knife: %s", err)
+		slog.Error("PullHandler serializing response", "err", err)
 	}
-}
-
-// Display the page that shows all the knives earnable
-func (s *Server) CatalogHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	knives, err := s.db.GetCollection(ctx, false)
-	if err != nil {
-		servererr(w, err, http.StatusInternalServerError)
-		return
-	}
-	var payload struct {
-		Knives []struct {
-			*db.KnifeType
-			RarityClass string
-		}
-	}
-
-	for _, k := range knives {
-		payload.Knives = append(payload.Knives, struct {
-			*db.KnifeType
-			RarityClass string
-		}{
-			k,
-			className(k.Rarity),
-		})
-	}
-
-	s.renderTemplate(w, "catalog.html", payload)
-}
-
-// CatalogView renders a page showing a specific earnable knife
-func (s *Server) CatalogView(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	vars := mux.Vars(r)
-
-	id, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		servererr(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	knife, err := s.db.GetKnifeType(ctx, id, false, false)
-	if err != nil {
-		servererr(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	payload := struct {
-		db.Knife
-		RarityClass string
-	}{
-		db.Knife{
-			ID:        knife.ID,
-			Name:      knife.Name,
-			Author:    knife.Author,
-			AuthorID:  knife.AuthorID,
-			Rarity:    knife.Rarity,
-			ImageName: knife.ImageName,
-			Deleted:   knife.Deleted,
-		},
-		className(knife.Rarity),
-	}
-
-	s.renderTemplate(w, "catalog-knife.html", payload)
 }
 
 func (s *Server) ImageUpload(w http.ResponseWriter, r *http.Request) {
@@ -758,39 +312,4 @@ func (s *Server) ImageUpload(w http.ResponseWriter, r *http.Request) {
 			ImageURL:  "https://images.shindaggers.io/images/" + basename,
 		},
 	)
-}
-
-func (s *Server) OnlyAdmin(inner http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Read the cookie for the user
-		// Check if user is Admin
-		// Then call inner otherwise 403
-		user, err := s.getUserForRequest(r.Context(), r)
-		if err != nil {
-			servererr(w, err, http.StatusForbidden)
-			return
-		}
-
-		if !user.Admin {
-			servererr(w, fmt.Errorf("you, %s, are not authorized", user.Name), http.StatusForbidden)
-			return
-		}
-
-		inner(w, r)
-	}
-}
-
-func timeAgo(t time.Time) string {
-	delta := time.Since(t)
-
-	if delta < time.Minute {
-		return "just now"
-	}
-	if delta < time.Hour {
-		return fmt.Sprintf("%d minutes ago", int(delta.Minutes()))
-	}
-	if delta < 24*time.Hour {
-		return fmt.Sprintf("%d hours ago", int(delta.Hours()))
-	}
-	return fmt.Sprintf("%d days ago", int(delta.Hours())/24)
 }

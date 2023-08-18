@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"math/rand"
 	"net/http"
 	"slices"
@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/cconger/shindaggers/pkg/db"
+	"github.com/cconger/shindaggers/pkg/twitch"
 
 	"github.com/gorilla/mux"
 )
@@ -55,8 +56,8 @@ func serveAPIErr(w http.ResponseWriter, err error, statusCode int, userMessage s
 		userMessage = "Unexpected Error"
 	}
 
-	// TODO(cconger): Proper telemetry here
-	log.Printf("apierror (%d) %s: %s", statusCode, userMessage, err.Error())
+	slog.Error("apierror", "statuscode", statusCode, "userMessage", userMessage, "err", err)
+
 	writeErr := json.NewEncoder(w).Encode(&apierror{
 		StatusCode:   statusCode,
 		ErrorMessage: userMessage,
@@ -64,7 +65,7 @@ func serveAPIErr(w http.ResponseWriter, err error, statusCode int, userMessage s
 	})
 
 	if writeErr != nil {
-		log.Printf("Unable to write apierror to responsewriter: %s", err)
+		slog.Error("writing apierror", "err", err)
 	}
 }
 
@@ -989,6 +990,29 @@ func (s *Server) adminUpdateIssueConfig(w http.ResponseWriter, r *http.Request) 
 	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
 }
 
+// Test is a test endpoint to test authentication
+func (s *Server) Test(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	u, err := s.getAuth(ctx, r)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
+		return
+	}
+
+	uc := s.twitchClient.UserClient(&twitch.UserAuth{
+		AccessToken:  u.AccessToken,
+		RefreshToken: u.RefreshToken,
+	})
+
+	user, err := uc.GetUser(ctx)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "couldn't get twitch user")
+		return
+	}
+	serveAPIPayload(w, user)
+}
+
 type RandomPullRequest struct {
 	TwitchID   string `json:"twitch_id"`
 	Subscriber bool   `json:"subscriber"`
@@ -1017,7 +1041,7 @@ func (s *Server) RandomPullHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	log.Printf("RandomPull: %+v", reqBody)
+	slog.Info("RandomPull", "payload", reqBody)
 
 	user, err := s.db.GetUserByTwitchID(ctx, reqBody.TwitchID)
 	if err != nil {

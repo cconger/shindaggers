@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -708,7 +708,7 @@ func (sd *SDDB) GetCollection(ctx context.Context, getDeleted bool) ([]*KnifeTyp
 			&approvedAt,
 		)
 		if err != nil {
-			log.Printf("Error: scan GetCollection: %s", err)
+			slog.Warn("deserializing GetCollection", "err", err)
 			continue
 		}
 
@@ -774,7 +774,7 @@ func (sd *SDDB) GetPendingKnives(ctx context.Context) ([]*KnifeType, error) {
 			&approvedAt,
 		)
 		if err != nil {
-			log.Printf("Error: scan GetCollection: %s", err)
+			slog.Warn("deserializing GetPendingKnives", "err", err)
 			continue
 		}
 
@@ -849,7 +849,6 @@ func (sd *SDDB) GetKnifeType(ctx context.Context, id int, getDeleted bool, getUn
 		&approvedAt,
 	)
 	if err != nil {
-		log.Printf("Error: scan GetCollection: %s", err)
 		return nil, err
 	}
 
@@ -912,7 +911,6 @@ func (sd *SDDB) GetKnifeTypesByRarity(ctx context.Context, rarity string) ([]*Kn
 			&approvedAt,
 		)
 		if err != nil {
-			log.Printf("Error: scan GetCollection: %s", err)
 			return nil, err
 		}
 
