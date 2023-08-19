@@ -36,16 +36,18 @@ If you just want to work on the presentation you can run the webapp in standalon
 ## Stuff in progress
 
  - [x] Rethink templating pretty completely (move to js front end)
- - [ ] Fix embedding, titles and metadata returned by server
  - [x] Server side pulling
-   - [ ] Animations for pull in webapp
- - [ ] Live "Latest"
+   - [x] Animations for pull in webapp
  - [x] Admin Pages Moved to JS App
  - [x] Allow logged in subscribers to upload knives direct to site pending approval
  - [x] Allow logged in users to "equip" a knife
+ - [ ] FIght leaderboards and stats
+   - [ ] Event page for knife fights
+ - [ ] Live "Latest"
+ - [ ] Fix embedding, titles and metadata returned by server
  - [ ] Local Dev database that isn't garbage
 
 ###  Exploration Ideas
 
- - [ ] Generate lore for knife issuance on pull (chatgpt4?)
  - [ ] Allow users to trade knives?
+ - [ ] Allow users to turn knives into matierals to craft other knives?
