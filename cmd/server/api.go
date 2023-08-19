@@ -449,9 +449,11 @@ func (s *Server) getEquippedForUser(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			slog.Error("unable to get knives for user", "err", err, "user.id", user.ID)
 		} else {
-			eq := IssuedCollectableFromDBKnife(raw[rand.Intn(len(raw))])
-			equipped = &eq
-			randomlypicked = true
+			if len(raw) > 0 {
+				eq := IssuedCollectableFromDBKnife(raw[rand.Intn(len(raw))])
+				equipped = &eq
+				randomlypicked = true
+			}
 		}
 	} else {
 		eq := IssuedCollectableFromDBKnife(eqRaw)
@@ -1049,8 +1051,12 @@ func (s *Server) RandomPullHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var reqBody RandomPullRequest
-	err := json.NewDecoder(r.Body).Decode(&reqBody)
+
+	var b bytes.Buffer
+	wrappedReader := io.TeeReader(r.Body, &b)
+	err := json.NewDecoder(wrappedReader).Decode(&reqBody)
 	if err != nil {
+		slog.Error("error parsing payload", "payload", b.String())
 		serveAPIErr(w, err, http.StatusBadRequest, "could not parse")
 		return
 	}
@@ -1245,6 +1251,7 @@ func (s *Server) adminApproveCollectable(w http.ResponseWriter, r *http.Request)
 
 type FightReport struct {
 	Players  []string `json:"players"`
+	Knives   []string `json:"knives"`
 	Outcomes []int    `json:"outcomes"`
 	DryRun   bool     `json:"dry_run"`
 }
@@ -1287,6 +1294,21 @@ func (s *Server) CombatReportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ids := make([]int64, len(report.Players))
+	knives := make([]int64, len(report.Knives))
+
+	if len(report.Knives) == 0 {
+		slog.Warn("received no knives")
+	}
+
+	for idx, id := range report.Knives {
+		// Should I verify that the user owns this knife?
+		knifeID, err := strconv.Atoi(id)
+		if err != nil {
+			serveAPIErr(w, err, http.StatusInternalServerError, "unable to resolve knife: "+report.Knives[idx])
+			return
+		}
+		knives[idx] = int64(knifeID)
+	}
 
 	for idx, id := range report.Players {
 		user, err := s.getUserByUserID(ctx, ParseUserID(id))
@@ -1294,6 +1316,7 @@ func (s *Server) CombatReportHandler(w http.ResponseWriter, r *http.Request) {
 			serveAPIErr(w, err, http.StatusInternalServerError, "unable to resolve user: "+id)
 			return
 		}
+
 		ids[idx] = int64(user.ID)
 	}
 

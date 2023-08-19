@@ -68,6 +68,7 @@ type PullWeight struct {
 type CombatReport struct {
 	ID           int64
 	Participants []int64
+	Knives       []int64
 	Outcomes     []int
 	CreatedAt    time.Time
 }

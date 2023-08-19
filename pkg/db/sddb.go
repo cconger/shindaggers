@@ -1316,6 +1316,7 @@ SELECT
   id,
   participants,
   outcomes,
+  knives,
   created_at
 FROM fights
 WHERE id = ?;
@@ -1331,11 +1332,13 @@ func (sd *SDDB) GetCombatReport(ctx context.Context, id int64) (*CombatReport, e
 	var createdAt string
 	var participants string
 	var outcomes string
+	var knives string
 
 	err = q.QueryRowContext(ctx, id).Scan(
 		&report.ID,
 		&participants,
 		&outcomes,
+		&knives,
 		&createdAt,
 	)
 	if err != nil {
@@ -1350,6 +1353,10 @@ func (sd *SDDB) GetCombatReport(ctx context.Context, id int64) (*CombatReport, e
 	if err != nil {
 		return nil, err
 	}
+	err = json.Unmarshal([]byte(knives), &report.Knives)
+	if err != nil {
+		return nil, err
+	}
 
 	report.CreatedAt, err = parseTimestamp(createdAt)
 	if err != nil {
@@ -1360,7 +1367,7 @@ func (sd *SDDB) GetCombatReport(ctx context.Context, id int64) (*CombatReport, e
 }
 
 var insertCombatReportQuery = `
-INSERT INTO fights (id, participants, outcomes) VALUES (?, ?, ?);
+INSERT INTO fights (id, participants, outcomes, knives) VALUES (?, ?, ?, ?);
 `
 
 func (sd *SDDB) CreateCombatReport(ctx context.Context, report *CombatReport) (*CombatReport, error) {
@@ -1377,8 +1384,12 @@ func (sd *SDDB) CreateCombatReport(ctx context.Context, report *CombatReport) (*
 	if err != nil {
 		return nil, fmt.Errorf("encoding outcomes: %w", err)
 	}
+	knives, err := json.Marshal(report.Knives)
+	if err != nil {
+		return nil, fmt.Errorf("encoding outcomes: %w", err)
+	}
 
-	_, err = q.ExecContext(ctx, report.ID, participants, outcomes)
+	_, err = q.ExecContext(ctx, report.ID, participants, outcomes, knives)
 	if err != nil {
 		return nil, err
 	}

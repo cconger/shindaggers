@@ -70,6 +70,9 @@ export const AdminPage: Component = () => {
     <>
       <h1>Admin Page</h1>
 
+      <h2>Get Token</h2>
+      <Token />
+
       <h2>New Knife</h2>
       <CollectableForm preview onSubmit={createCollectable} />
 
@@ -77,6 +80,24 @@ export const AdminPage: Component = () => {
       <CollectableList />
     </>
   )
+}
+
+
+const Token: Component = () => {
+  let am = useAuthManager();
+  let [show, setShow] = createSignal(false);
+
+  return (
+    <div>
+      <Show when={show()}>
+        {am.token()}
+        <div class="button" onClick={() => { setShow(false); }}>Hide</div>
+      </Show>
+      <Show when={!show()}>
+        <div class="button" onClick={() => { window.confirm("Show your token? Do not show on stream!"); setShow(!show()) }} >Show Token</div>
+      </Show>
+    </div >
+  );
 }
 
 type AdminCollectableList = {

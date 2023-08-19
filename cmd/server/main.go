@@ -238,7 +238,6 @@ func main() {
 
 	// Image Upload
 	r.HandleFunc("/api/image", s.ImageUpload).Methods(http.MethodPost)
-
 	r.HandleFunc("/api/combat/report", s.CombatReportHandler).Methods(http.MethodPost)
 
 	// Overlay is a mini SPA for OBS
