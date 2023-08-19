@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS fights (
   participants JSON,
   knives JSON,
   outcomes JSON,
+  event VARCHAR(100),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY(id)
 );

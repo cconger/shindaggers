@@ -1253,6 +1253,7 @@ type FightReport struct {
 	Players  []string `json:"players"`
 	Knives   []string `json:"knives"`
 	Outcomes []int    `json:"outcomes"`
+	Event    string   `json:"event"`
 	DryRun   bool     `json:"dry_run"`
 }
 
@@ -1323,7 +1324,9 @@ func (s *Server) CombatReportHandler(w http.ResponseWriter, r *http.Request) {
 	outReport := &db.CombatReport{
 		ID:           s.idGenerator.Generate().Int64(),
 		Participants: ids,
+		Knives:       knives,
 		Outcomes:     report.Outcomes,
+		Event:        report.Event,
 	}
 
 	if !report.DryRun {

@@ -70,6 +70,7 @@ type CombatReport struct {
 	Participants []int64
 	Knives       []int64
 	Outcomes     []int
+	Event        string
 	CreatedAt    time.Time
 }
 

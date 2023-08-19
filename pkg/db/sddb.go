@@ -1317,6 +1317,7 @@ SELECT
   participants,
   outcomes,
   knives,
+  event,
   created_at
 FROM fights
 WHERE id = ?;
@@ -1339,6 +1340,7 @@ func (sd *SDDB) GetCombatReport(ctx context.Context, id int64) (*CombatReport, e
 		&participants,
 		&outcomes,
 		&knives,
+		&report.Event,
 		&createdAt,
 	)
 	if err != nil {
@@ -1367,7 +1369,7 @@ func (sd *SDDB) GetCombatReport(ctx context.Context, id int64) (*CombatReport, e
 }
 
 var insertCombatReportQuery = `
-INSERT INTO fights (id, participants, outcomes, knives) VALUES (?, ?, ?, ?);
+INSERT INTO fights (id, participants, outcomes, knives, event) VALUES (?, ?, ?, ?, ?);
 `
 
 func (sd *SDDB) CreateCombatReport(ctx context.Context, report *CombatReport) (*CombatReport, error) {
@@ -1389,7 +1391,7 @@ func (sd *SDDB) CreateCombatReport(ctx context.Context, report *CombatReport) (*
 		return nil, fmt.Errorf("encoding outcomes: %w", err)
 	}
 
-	_, err = q.ExecContext(ctx, report.ID, participants, outcomes, knives)
+	_, err = q.ExecContext(ctx, report.ID, participants, outcomes, knives, report.Event)
 	if err != nil {
 		return nil, err
 	}
