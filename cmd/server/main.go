@@ -38,7 +38,7 @@ func (m *mockBlobClient) PutObject(ctx context.Context, bucket string, file stri
 
 type UserID struct {
 	TwitchID   string
-	InternalID int
+	InternalID int64
 	Name       string
 }
 
@@ -73,7 +73,7 @@ func ParseUserID(str string) UserID {
 	}
 
 	if regexp.MustCompile(`^\d+$`).MatchString(str) {
-		n, err := strconv.Atoi(str)
+		n, err := strconv.ParseInt(str, 10, 64)
 		if err != nil {
 			log.Printf("Unable to parse a numeric id? what the hell")
 			return UserID{}
@@ -94,7 +94,7 @@ func (id *UserID) String() string {
 	}
 
 	if id.IsInternal() {
-		return strconv.Itoa(id.InternalID)
+		return strconv.FormatInt(id.InternalID, 10)
 	}
 
 	if id.IsName() {
@@ -201,6 +201,7 @@ func main() {
 	r.HandleFunc("/api/user/{userid}", s.getUser).Methods(http.MethodGet)
 	r.HandleFunc("/api/user/{userid}/equipped", s.getEquippedForUser).Methods(http.MethodGet)
 	r.HandleFunc("/api/user/{userid}/collection", s.getUserCollection).Methods(http.MethodGet)
+	r.HandleFunc("/api/user/{userid}/stats", s.getUserStats).Methods(http.MethodGet)
 
 	// Search Users
 	r.HandleFunc("/api/users", s.getUsers).Methods(http.MethodGet)

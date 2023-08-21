@@ -145,7 +145,7 @@ WHERE knife_ownership.instance_id = ?
 AND knives.approved_by is not null;
 `
 
-func (sd *SDDB) GetKnife(ctx context.Context, knifeID int) (*Knife, error) {
+func (sd *SDDB) GetKnife(ctx context.Context, knifeID int64) (*Knife, error) {
 	query, err := sd.db.Prepare(getKnifeQuery)
 	if err != nil {
 		return nil, err
@@ -213,19 +213,19 @@ JOIN knives ON knife_ownership.knife_id = knives.id
 LEFT JOIN users owner ON knife_ownership.user_id = owner.id
 LEFT JOIN users author ON knives.author_id = author.id
 JOIN editions ON knife_ownership.edition_id = editions.id
-WHERE owner.lookup_name = ?
+WHERE owner.id = ?
 AND knives.deleted = false
 AND knives.approved_by is not null
 ORDER BY knife_ownership.transacted_at DESC;
 `
 
-func (sd *SDDB) GetKnivesForUsername(ctx context.Context, username string) ([]*Knife, error) {
+func (sd *SDDB) GetKnivesForUser(ctx context.Context, userID int64) ([]*Knife, error) {
 	query, err := sd.db.PrepareContext(ctx, getKnifeForUserQuery)
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := query.QueryContext(ctx, username)
+	rows, err := query.QueryContext(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +280,7 @@ FROM users
 WHERE id = ?;
 `
 
-func (sd *SDDB) GetUserByID(ctx context.Context, id int) (*User, error) {
+func (sd *SDDB) GetUserByID(ctx context.Context, id int64) (*User, error) {
 	query, err := sd.db.Prepare(getUserIDQuery)
 	if err != nil {
 		return nil, err
@@ -472,13 +472,15 @@ func (sd *SDDB) GetUsers(ctx context.Context, substr string) ([]*User, error) {
 	return users, nil
 }
 
-var createUserQuery = `INSERT INTO users (twitch_name, lookup_name, twitch_id) VALUES (?, ?, ?);`
-
-var createUserByNameQuery = `INSERT INTO users (twitch_name, lookup_name) VALUES (?, ?);`
+var createUserQuery = `INSERT INTO users (id, twitch_name, lookup_name, twitch_id) VALUES (?, ?, ?, ?);`
 
 func (sd *SDDB) CreateUser(ctx context.Context, user *User) (*User, error) {
 	if user == nil {
 		return nil, fmt.Errorf("user cannot be nil")
+	}
+
+	if user.ID == 0 {
+		return nil, fmt.Errorf("user ID must be specified")
 	}
 
 	if user.Name == "" {
@@ -492,89 +494,24 @@ func (sd *SDDB) CreateUser(ctx context.Context, user *User) (*User, error) {
 
 	var query *sql.Stmt
 	var err error
-	var res sql.Result
-	if user.TwitchID != "" {
-		query, err = sd.db.Prepare(createUserQuery)
-		if err != nil {
-			return nil, err
-		}
-
-		res, err = query.ExecContext(ctx, user.Name, lookupName, user.TwitchID)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		query, err = sd.db.Prepare(createUserByNameQuery)
-		if err != nil {
-			return nil, err
-		}
-
-		res, err = query.ExecContext(ctx, user.Name, lookupName)
-		if err != nil {
-			return nil, err
-		}
+	query, err = sd.db.Prepare(createUserQuery)
+	if err != nil {
+		return nil, err
 	}
-	id, err := res.LastInsertId()
+
+	_, err = query.ExecContext(ctx, user.ID, user.Name, lookupName, user.TwitchID)
 	if err != nil {
 		return nil, err
 	}
 
 	return &User{
-		ID:         int(id),
+		ID:         user.ID,
 		Name:       user.Name,
 		LookupName: lookupName,
 		TwitchID:   user.TwitchID,
 		Admin:      false,
 		CreatedAt:  time.Now(),
 	}, nil
-}
-
-var (
-	getKnifeByName       = `SELECT id FROM knives WHERE name = ? AND deleted = false;`
-	createKnifePullQuery = `INSERT INTO knife_ownership (user_id, knife_id, trans_type, was_subscriber, is_verified, edition_id) VALUES (?, ?, ?, ?, ?, ?);`
-)
-
-func (sd *SDDB) PullKnife(ctx context.Context, userID int, knifename string, subscriber bool, verified bool, edition_id int) (*Knife, error) {
-	// Lookup knifeID by name
-	knifeq, err := sd.db.Prepare(getKnifeByName)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := knifeq.Query(knifename)
-	if err != nil {
-		return nil, ErrNotFound
-	}
-	defer rows.Close()
-
-	if !rows.Next() {
-		return nil, ErrNotFound
-	}
-
-	var knifeID int
-
-	err = rows.Scan(&knifeID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create the pull
-	createQ, err := sd.db.PrepareContext(ctx, createKnifePullQuery)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := createQ.ExecContext(ctx, userID, knifeID, "pull", subscriber, verified, edition_id)
-	if err != nil {
-		return nil, err
-	}
-
-	id, err := res.LastInsertId()
-	if err != nil {
-		return nil, err
-	}
-
-	return sd.GetKnife(ctx, int(id))
 }
 
 var queryUserAuthByToken = `
@@ -760,7 +697,7 @@ func (sd *SDDB) GetPendingKnives(ctx context.Context) ([]*KnifeType, error) {
 	for rows.Next() {
 		var k KnifeType
 
-		var approvedBy *int
+		var approvedBy *int64
 		var approvedAt *string
 
 		err = rows.Scan(
@@ -811,7 +748,7 @@ WHERE knives.id = ?
 LIMIT 1;
 `
 
-func (sd *SDDB) GetKnifeType(ctx context.Context, id int, getDeleted bool, getUnapproved bool) (*KnifeType, error) {
+func (sd *SDDB) GetKnifeType(ctx context.Context, id int64, getDeleted bool, getUnapproved bool) (*KnifeType, error) {
 	optionalWhere := ""
 	if !getDeleted {
 		optionalWhere += "AND knives.deleted = false "
@@ -835,7 +772,70 @@ func (sd *SDDB) GetKnifeType(ctx context.Context, id int, getDeleted bool, getUn
 	}
 
 	var k KnifeType
-	var approvedBy *int
+	var approvedBy *int64
+	var approvedAt *string
+
+	err = rows.Scan(
+		&k.ID,
+		&k.Name,
+		&k.Author,
+		&k.AuthorID,
+		&k.Rarity,
+		&k.ImageName,
+		&k.Deleted,
+		&approvedBy,
+		&approvedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	k.Approved = (approvedBy != nil)
+
+	if approvedAt != nil {
+		k.ApprovedAt, err = parseTimestamp(*approvedAt)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &k, nil
+}
+
+var getKnifeTypeNameQuery = `
+SELECT
+  knives.id,
+  knives.name,
+  author.twitch_name,
+  author.id,
+  knives.rarity,
+  knives.image_name,
+  knives.deleted,
+  knives.approved_by,
+  knives.approved_at
+FROM knives
+LEFT JOIN users author ON knives.author_id = author.id
+WHERE knives.name = ?
+LIMIT 1;
+`
+
+func (sd *SDDB) GetKnifeTypeByName(ctx context.Context, name string) (*KnifeType, error) {
+	q, err := sd.db.PrepareContext(ctx, getKnifeTypeQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := q.QueryContext(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	if !rows.Next() {
+		return nil, ErrNotFound
+	}
+
+	var k KnifeType
+	var approvedBy *int64
 	var approvedAt *string
 
 	err = rows.Scan(
@@ -897,7 +897,7 @@ func (sd *SDDB) GetKnifeTypesByRarity(ctx context.Context, rarity string) ([]*Kn
 	res := []*KnifeType{}
 	for rows.Next() {
 		var k KnifeType
-		var approvedBy *int
+		var approvedBy *int64
 		var approvedAt *string
 
 		err = rows.Scan(
@@ -931,7 +931,7 @@ func (sd *SDDB) GetKnifeTypesByRarity(ctx context.Context, rarity string) ([]*Kn
 }
 
 var createKnifeTypeQuery = `
-INSERT INTO knives (name, author_id, rarity, image_name) VALUES (?, ?, ?, ?);
+INSERT INTO knives (id, name, author_id, rarity, image_name) VALUES (?, ?, ?, ?, ?);
 `
 
 func (sd *SDDB) CreateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeType, error) {
@@ -940,17 +940,16 @@ func (sd *SDDB) CreateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeTy
 		return nil, err
 	}
 
-	res, err := q.ExecContext(ctx, knife.Name, knife.AuthorID, knife.Rarity, knife.ImageName)
+	if knife.ID == 0 {
+		return nil, errors.New("knife id must be set")
+	}
+
+	_, err = q.ExecContext(ctx, knife.ID, knife.Name, knife.AuthorID, knife.Rarity, knife.ImageName)
 	if err != nil {
 		return nil, err
 	}
 
-	id, err := res.LastInsertId()
-	if err != nil {
-		return nil, err
-	}
-
-	return sd.GetKnifeType(ctx, int(id), true, true)
+	return sd.GetKnifeType(ctx, knife.ID, true, true)
 }
 
 var createEditionQuery = `
@@ -1113,7 +1112,7 @@ ON DUPLICATE KEY UPDATE
   user_id = ?, instance_id = ?;
 `
 
-func (sd *SDDB) EquipKnifeForUser(ctx context.Context, userID int, knifeID int) error {
+func (sd *SDDB) EquipKnifeForUser(ctx context.Context, userID int64, knifeID int64) error {
 	q, err := sd.db.PrepareContext(ctx, equipKnifeQuery)
 	if err != nil {
 		return err
@@ -1152,7 +1151,7 @@ WHERE knife_ownership.instance_id = (SELECT instance_id FROM equipped WHERE user
 AND knives.deleted = false;
 `
 
-func (sd *SDDB) GetEquippedKnifeForUser(ctx context.Context, userID int) (*Knife, error) {
+func (sd *SDDB) GetEquippedKnifeForUser(ctx context.Context, userID int64) (*Knife, error) {
 	q, err := sd.db.PrepareContext(ctx, getEquippedKnifeQuery)
 	if err != nil {
 		return nil, err
@@ -1204,7 +1203,7 @@ INSERT INTO image_uploads (user_id, image_id, path, uploadname)
 VALUES (?, ?, ?, ?);
 `
 
-func (sd *SDDB) CreateImageUpload(ctx context.Context, id int64, authorID int, path string, uploadname string) error {
+func (sd *SDDB) CreateImageUpload(ctx context.Context, id int64, authorID int64, path string, uploadname string) error {
 	query, err := sd.db.Prepare(insertImageUpload)
 	if err != nil {
 		return err
@@ -1217,23 +1216,38 @@ func (sd *SDDB) CreateImageUpload(ctx context.Context, id int64, authorID int, p
 	return nil
 }
 
-func (sd *SDDB) IssueCollectable(ctx context.Context, collectableID int, userID int, subscriber bool, verified bool, editionID int, source string) (*Knife, error) {
-	createQ, err := sd.db.PrepareContext(ctx, createKnifePullQuery)
+var issueCollectableQuery = `
+INSERT INTO knife_ownership (
+  instance_id,
+  user_id,
+  knife_id,
+  trans_type,
+  was_subscriber,
+  is_verified,
+  edition_id
+) VALUES (?, ?, ?, ?, ?, ?, ?);
+`
+
+func (sd *SDDB) IssueCollectable(ctx context.Context, knife *Knife, source string) (*Knife, error) {
+	createQ, err := sd.db.PrepareContext(ctx, issueCollectableQuery)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := createQ.ExecContext(ctx, userID, collectableID, source, subscriber, verified, editionID)
+	_, err = createQ.ExecContext(ctx,
+		knife.InstanceID,
+		knife.OwnerID,
+		knife.ID,
+		source,
+		knife.Subscriber,
+		knife.Verified,
+		1,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	id, err := res.LastInsertId()
-	if err != nil {
-		return nil, err
-	}
-
-	return sd.GetKnife(ctx, int(id))
+	return sd.GetKnife(ctx, knife.InstanceID)
 }
 
 var getWeightQuery = `
@@ -1297,7 +1311,7 @@ approved_at = CURRENT_TIMESTAMP()
 WHERE id = ?;
 `
 
-func (sd *SDDB) ApproveKnifeType(ctx context.Context, id int, userID int) (*KnifeType, error) {
+func (sd *SDDB) ApproveKnifeType(ctx context.Context, id int64, userID int64) (*KnifeType, error) {
 	createQ, err := sd.db.PrepareContext(ctx, approveKnifeQuery)
 	if err != nil {
 		return nil, err
@@ -1368,15 +1382,21 @@ func (sd *SDDB) GetCombatReport(ctx context.Context, id int64) (*CombatReport, e
 	return &report, nil
 }
 
-var insertCombatReportQuery = `
+var (
+	insertCombatReportQuery = `
 INSERT INTO fights (id, participants, outcomes, knives, event) VALUES (?, ?, ?, ?, ?);
 `
+	insertCombatOutcomeQuery = `
+INSERT INTO fight_outcomes (fight_id, user_id, collectable_id, outcome) VALUES (?, ?, ?, ?);
+`
+)
 
 func (sd *SDDB) CreateCombatReport(ctx context.Context, report *CombatReport) (*CombatReport, error) {
-	q, err := sd.db.PrepareContext(ctx, insertCombatReportQuery)
+	tx, err := sd.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("beginning transaction: %w", err)
 	}
+	defer tx.Rollback()
 
 	participants, err := json.Marshal(report.Participants)
 	if err != nil {
@@ -1391,10 +1411,98 @@ func (sd *SDDB) CreateCombatReport(ctx context.Context, report *CombatReport) (*
 		return nil, fmt.Errorf("encoding outcomes: %w", err)
 	}
 
-	_, err = q.ExecContext(ctx, report.ID, participants, outcomes, knives, report.Event)
+	_, err = tx.ExecContext(ctx, insertCombatReportQuery, report.ID, participants, outcomes, knives, report.Event)
 	if err != nil {
 		return nil, err
 	}
 
+	for idx, user := range report.Participants {
+		_, err := tx.ExecContext(ctx, insertCombatOutcomeQuery, report.ID, user, report.Knives[idx], outcomeFromInt(report.Outcomes[idx]))
+		if err != nil {
+			return nil, fmt.Errorf("creating outcome entry: %w", err)
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, fmt.Errorf("committing transaction: %w", err)
+	}
+
 	return sd.GetCombatReport(ctx, report.ID)
+}
+
+var getKnifeStatsForUserQuery = `
+SELECT
+  outcome,
+  COUNT(*)
+FROM fight_outcomes
+WHERE user_id = ?
+GROUP BY outcome;
+`
+
+func (sd *SDDB) GetCombatStatsForUser(ctx context.Context, userID int64) (CombatStats, error) {
+	rows, err := sd.db.QueryContext(ctx, getKnifeStatsForUserQuery, userID)
+	if err != nil {
+		return nil, fmt.Errorf("querying for knife stats: %w", err)
+	}
+
+	stats := make(map[string]int)
+
+	for rows.Next() {
+		var outcome string
+		var count int
+
+		err := rows.Scan(&outcome, &count)
+		if err != nil {
+			return nil, fmt.Errorf("scanning row: %w", err)
+		}
+
+		stats[outcome] = count
+	}
+
+	return stats, nil
+}
+
+var getKnifeStatsForKnifeQuery = `
+SELECT
+  outcome,
+  COUNT(*)
+FROM fight_outcomes
+WHERE collectable_id = ?
+GROUP BY outcome;
+`
+
+func (sd *SDDB) GetCombatStatsForKnife(ctx context.Context, knifeID int64) (CombatStats, error) {
+	rows, err := sd.db.QueryContext(ctx, getKnifeStatsForKnifeQuery, knifeID)
+	if err != nil {
+		return nil, fmt.Errorf("querying for knife stats: %w", err)
+	}
+
+	stats := make(map[string]int)
+
+	for rows.Next() {
+		var outcome string
+		var count int
+
+		err := rows.Scan(&outcome, &count)
+		if err != nil {
+			return nil, fmt.Errorf("scanning row: %w", err)
+		}
+
+		stats[outcome] = count
+	}
+
+	return stats, nil
+}
+
+func outcomeFromInt(outcome int) string {
+	switch outcome {
+	case 1:
+		return "win"
+	case 0:
+		return "draw"
+	case -1:
+		return "loss"
+	default:
+		return ""
+	}
 }

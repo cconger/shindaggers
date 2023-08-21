@@ -59,3 +59,9 @@ const colorMap = {
 export const rarityColor = (r: Rarity): string => {
   return colorMap[r];
 };
+
+export type UserDuelStats = {
+  wins: number;
+  losses: number;
+  ties: number;
+}

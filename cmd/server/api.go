@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/cconger/shindaggers/pkg/db"
@@ -96,9 +95,9 @@ type IssuedCollectable struct {
 func IssuedCollectableFromDBKnife(k *db.Knife) IssuedCollectable {
 	res := IssuedCollectable{
 		Collectable: CollectableFromDBKnife(k),
-		InstanceID:  strconv.Itoa(k.InstanceID),
+		InstanceID:  strconv.FormatInt(k.InstanceID, 10),
 		Owner: User{
-			ID:   strconv.Itoa(k.OwnerID),
+			ID:   strconv.FormatInt(k.OwnerID, 10),
 			Name: k.Owner,
 		},
 		Verified:   k.Verified,
@@ -122,10 +121,10 @@ type Collectable struct {
 
 func CollectableFromDBKnife(k *db.Knife) Collectable {
 	return Collectable{
-		ID:   strconv.Itoa(k.ID),
+		ID:   strconv.FormatInt(k.ID, 10),
 		Name: k.Name,
 		Author: User{
-			ID:   strconv.Itoa(k.AuthorID),
+			ID:   strconv.FormatInt(k.AuthorID, 10),
 			Name: k.Author,
 		},
 		Rarity:    k.Rarity,
@@ -136,10 +135,10 @@ func CollectableFromDBKnife(k *db.Knife) Collectable {
 
 func CollectableFromDBKnifeType(k *db.KnifeType) Collectable {
 	return Collectable{
-		ID:   strconv.Itoa(k.ID),
+		ID:   strconv.FormatInt(k.ID, 10),
 		Name: k.Name,
 		Author: User{
-			ID:   strconv.Itoa(k.AuthorID),
+			ID:   strconv.FormatInt(k.AuthorID, 10),
 			Name: k.Author,
 		},
 		Rarity:    k.Rarity,
@@ -167,7 +166,7 @@ func AdminCollectableFromDBKnifeType(k *db.KnifeType) AdminCollectable {
 
 func UserFromDBUser(u *db.User) User {
 	return User{
-		ID:   strconv.Itoa(u.ID),
+		ID:   strconv.FormatInt(u.ID, 10),
 		Name: u.Name,
 	}
 }
@@ -177,12 +176,18 @@ type User struct {
 	Name string `json:"name"`
 }
 
+type UserStats struct {
+	Wins   int `json:"wins"`
+	Losses int `json:"losses"`
+	Ties   int `json:"ties"`
+}
+
 func (s *Server) getIssuedCollectable(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	vars := mux.Vars(r)
 
-	id, err := strconv.Atoi(vars["id"])
+	id, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusBadRequest, "Could not parse id")
 		return
@@ -238,7 +243,7 @@ func (s *Server) getCollectable(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 
-	id, err := strconv.Atoi(vars["id"])
+	id, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusBadRequest, "Could not parse collectable id")
 		return
@@ -408,7 +413,7 @@ func (s *Server) getUser(w http.ResponseWriter, r *http.Request) {
 			User User
 		}{
 			User: User{
-				ID:   strconv.Itoa(user.ID),
+				ID:   strconv.FormatInt(user.ID, 10),
 				Name: user.Name,
 			},
 		},
@@ -445,7 +450,7 @@ func (s *Server) getEquippedForUser(w http.ResponseWriter, r *http.Request) {
 	var equipped *IssuedCollectable
 	var randomlypicked bool
 	if eqRaw == nil {
-		raw, err := s.db.GetKnivesForUsername(ctx, user.LookupName)
+		raw, err := s.db.GetKnivesForUser(ctx, user.ID)
 		if err != nil {
 			slog.Error("unable to get knives for user", "err", err, "user.id", user.ID)
 		} else {
@@ -468,7 +473,7 @@ func (s *Server) getEquippedForUser(w http.ResponseWriter, r *http.Request) {
 			RandomlyPicked bool
 		}{
 			User: User{
-				ID:   strconv.Itoa(user.ID),
+				ID:   strconv.FormatInt(user.ID, 10),
 				Name: user.Name,
 			},
 			Equipped:       equipped,
@@ -507,7 +512,7 @@ func (s *Server) getUserCollection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	issuedRaw, err := s.db.GetKnivesForUsername(ctx, strings.ToLower(user.LookupName))
+	issuedRaw, err := s.db.GetKnivesForUser(ctx, user.ID)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			serveAPIErr(w, err, http.StatusNotFound, "Unknown user")
@@ -541,7 +546,7 @@ func (s *Server) getUserCollection(w http.ResponseWriter, r *http.Request) {
 			Equipped     *IssuedCollectable
 		}{
 			User: User{
-				ID:   strconv.Itoa(user.ID),
+				ID:   strconv.FormatInt(user.ID, 10),
 				Name: user.Name,
 			},
 			Collectables: issuedCollectables,
@@ -576,7 +581,7 @@ func (s *Server) EquipHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	parseduid, err := strconv.Atoi(payload.UserID)
+	parseduid, err := strconv.ParseInt(payload.UserID, 10, 64)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusBadRequest, "UserID not numeric ")
 		return
@@ -587,7 +592,7 @@ func (s *Server) EquipHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	issuedID, err := strconv.Atoi(payload.IssuedID)
+	issuedID, err := strconv.ParseInt(payload.IssuedID, 10, 64)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusBadRequest, "IssuedID not numeric ")
 		return
@@ -728,6 +733,7 @@ func (s Server) createCollectable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	created, err := s.db.CreateKnifeType(ctx, &db.KnifeType{
+		ID:        s.idGenerator.Generate().Int64(),
 		Name:      payload.Collectable.Name,
 		AuthorID:  u.ID,
 		Rarity:    payload.Collectable.Rarity,
@@ -777,7 +783,7 @@ func (s *Server) adminCreateCollectable(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	authorID, err := strconv.Atoi(payload.Collectable.Author.ID)
+	authorID, err := strconv.ParseInt(payload.Collectable.Author.ID, 10, 64)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusBadRequest, "Author.ID is not parseable")
 		return
@@ -794,6 +800,7 @@ func (s *Server) adminCreateCollectable(w http.ResponseWriter, r *http.Request) 
 	}
 
 	created, err := s.db.CreateKnifeType(ctx, &db.KnifeType{
+		ID:        s.idGenerator.Generate().Int64(),
 		Name:      payload.Collectable.Name,
 		AuthorID:  authorID,
 		Rarity:    payload.Collectable.Rarity,
@@ -833,7 +840,7 @@ func (s *Server) adminDeleteCollectable(w http.ResponseWriter, r *http.Request) 
 
 	vars := mux.Vars(r)
 
-	id, err := strconv.Atoi(vars["id"])
+	id, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusBadRequest, "id is not numeric")
 		return
@@ -866,7 +873,7 @@ func (s *Server) adminUpdateCollectable(w http.ResponseWriter, r *http.Request) 
 
 	vars := mux.Vars(r)
 
-	id, err := strconv.Atoi(vars["id"])
+	id, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusBadRequest, "id is not numeric")
 		return
@@ -890,7 +897,7 @@ func (s *Server) adminUpdateCollectable(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	authorID, err := strconv.Atoi(payload.Collectable.Author.ID)
+	authorID, err := strconv.ParseInt(payload.Collectable.Author.ID, 10, 64)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusBadRequest, "Author.ID is not parseable")
 		return
@@ -1081,6 +1088,7 @@ func (s *Server) RandomPullHandler(w http.ResponseWriter, r *http.Request) {
 			twuser := twusers[0]
 
 			user, nerr = s.db.CreateUser(ctx, &db.User{
+				ID:       s.idGenerator.Generate().Int64(),
 				TwitchID: twuser.ID,
 				Name:     twuser.DisplayName,
 			})
@@ -1099,7 +1107,7 @@ func (s *Server) RandomPullHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	verified := (rand.Intn(100) == 0)
-	collectableID, err := strconv.Atoi(collectable.ID)
+	collectableID, err := strconv.ParseInt(collectable.ID, 10, 64)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusInternalServerError, "unexpected error")
 		return
@@ -1107,7 +1115,13 @@ func (s *Server) RandomPullHandler(w http.ResponseWriter, r *http.Request) {
 
 	var issued IssuedCollectable
 	if !reqBody.DryRun {
-		knifeRaw, err := s.db.IssueCollectable(ctx, collectableID, user.ID, reqBody.Subscriber, verified, 1, "pull")
+		knifeRaw, err := s.db.IssueCollectable(ctx, &db.Knife{
+			InstanceID: s.idGenerator.Generate().Int64(),
+			ID:         collectableID,
+			OwnerID:    user.ID,
+			Subscriber: reqBody.Subscriber,
+			Verified:   verified,
+		}, "pull")
 		if err != nil {
 			serveAPIErr(w, err, http.StatusInternalServerError, "unexpected error")
 			return
@@ -1117,7 +1131,7 @@ func (s *Server) RandomPullHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		issued = IssuedCollectable{
 			Collectable: *collectable,
-			InstanceID:  "dryrun",
+			InstanceID:  strconv.FormatInt(s.idGenerator.Generate().Int64(), 10),
 			Owner:       UserFromDBUser(user),
 			Verified:    verified,
 			Subscriber:  reqBody.Subscriber,
@@ -1190,7 +1204,7 @@ func (s *Server) adminGetCollectable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	id, err := strconv.Atoi(vars["id"])
+	id, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusBadRequest, "id is non numeric")
 		return
@@ -1227,7 +1241,7 @@ func (s *Server) adminApproveCollectable(w http.ResponseWriter, r *http.Request)
 	}
 
 	vars := mux.Vars(r)
-	id, err := strconv.Atoi(vars["id"])
+	id, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusBadRequest, "id is non numeric")
 		return
@@ -1303,7 +1317,7 @@ func (s *Server) CombatReportHandler(w http.ResponseWriter, r *http.Request) {
 
 	for idx, id := range report.Knives {
 		// Should I verify that the user owns this knife?
-		knifeID, err := strconv.Atoi(id)
+		knifeID, err := strconv.ParseInt(id, 10, 64)
 		if err != nil {
 			serveAPIErr(w, err, http.StatusInternalServerError, "unable to resolve knife: "+report.Knives[idx])
 			return
@@ -1344,4 +1358,50 @@ func (s *Server) CombatReportHandler(w http.ResponseWriter, r *http.Request) {
 	}{
 		Report: outReport,
 	})
+}
+
+func (s *Server) getUserStats(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	vars := mux.Vars(r)
+
+	useridstr, ok := vars["userid"]
+	if !ok {
+		serveAPIErr(w, fmt.Errorf("id required"), http.StatusBadRequest, "User ID Required")
+		return
+	}
+
+	user, err := s.getUserByUserID(ctx, ParseUserID(useridstr))
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			serveAPIErr(w, err, http.StatusNotFound, "Unknown user")
+			return
+		}
+		serveAPIErr(w, err, http.StatusInternalServerError, "")
+		return
+	}
+
+	stats, err := s.db.GetCombatStatsForUser(ctx, user.ID)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "error calculating stats")
+		return
+	}
+
+	serveAPIPayload(
+		w,
+		&struct {
+			User  User
+			Stats UserStats
+		}{
+			User: User{
+				ID:   strconv.FormatInt(user.ID, 10),
+				Name: user.Name,
+			},
+			Stats: UserStats{
+				Wins:   stats["win"],
+				Losses: stats["loss"],
+				Ties:   stats["draw"],
+			},
+		},
+	)
 }

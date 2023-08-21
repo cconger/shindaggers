@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"strconv"
 	"strings"
 	"time"
 
@@ -221,16 +220,19 @@ func (s *Server) PullHandler(w http.ResponseWriter, r *http.Request) {
 	subscriber := reqBody.Subscriber == "1" || strings.ToLower(reqBody.Subscriber) == "true"
 	verified := reqBody.Verified == "1" || strings.ToLower(reqBody.Verified) == "true"
 
-	edition := 1
-	if reqBody.Edition != "" {
-		edition, err = strconv.Atoi(reqBody.Edition)
-		if err != nil {
-			serveAPIErr(w, fmt.Errorf("unprocessable edition %s: %w", reqBody.Edition, err), http.StatusBadRequest, "bad edition")
-			return
-		}
+	t, err := s.db.GetKnifeTypeByName(ctx, reqBody.Knifename)
+	if err != nil {
+		serveAPIErr(w, fmt.Errorf("unknown knife name %s: %w", reqBody.Knifename, err), http.StatusBadRequest, "Unknown knife name")
+		return
 	}
 
-	k, err := s.db.PullKnife(ctx, user.ID, reqBody.Knifename, subscriber, verified, edition)
+	k, err := s.db.IssueCollectable(ctx, &db.Knife{
+		InstanceID: s.idGenerator.Generate().Int64(),
+		ID:         t.ID,
+		OwnerID:    user.ID,
+		Subscriber: subscriber,
+		Verified:   verified,
+	}, "pull")
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			serveAPIErr(w, err, http.StatusBadRequest, "could not find knife or user")

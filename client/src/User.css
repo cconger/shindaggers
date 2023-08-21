@@ -17,3 +17,24 @@
     margin-bottom: 2em;
   }
 }
+
+.stat-block {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.stat-block .stat {
+  text-align: center;
+}
+
+.stat-block .stat .header {
+  font-size: 2em;
+  font-weight: 700;
+  color: black;
+}
+
+.stat-block .stat .count {
+  font-size: 1.2em;
+  color: black;
+}

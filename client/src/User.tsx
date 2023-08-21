@@ -3,7 +3,7 @@ import { Show, For, createResource, Switch, Match } from 'solid-js';
 import { A, useParams } from '@solidjs/router';
 import { MiniCard } from './MiniCard';
 import './Catalog.css';
-import type { IssuedCollectable, User } from './resources';
+import type { IssuedCollectable, User, UserDuelStats } from './resources';
 import { DistributionChart } from './Chart';
 
 import './User.css';
@@ -44,7 +44,8 @@ export const UserCollection: Component = (props) => {
         <div class="catalog-header">
           <div class="catalog-title">
             <h1>{usercollection()!.User.name}'s Collection</h1>
-            <h2>{total()} Knives</h2>
+            <h3>{total()} Knives</h3>
+            <DuelStats user={usercollection()!.User} />
           </div>
           <Show when={usercollection()!.Equipped}>
             <div class="catalog-equipped">
@@ -69,3 +70,65 @@ export const UserCollection: Component = (props) => {
     </Switch>
   );
 };
+
+
+const fetchDuelStats = async (id: string): Promise<UserDuelStats> => {
+  let response = await fetch(`/api/user/${id}/stats`)
+  if (response.status !== 200) {
+    throw new Error("unexpected status code " + response.statusText);
+  }
+  let payload = await response.json();
+  return payload.Stats;
+}
+
+type DuelStatsProps = {
+  user: User;
+}
+
+export const DuelStats: Component<DuelStatsProps> = (props) => {
+
+  const [userstats] = createResource(() => props.user.id, fetchDuelStats)
+
+  let total = () => {
+    let s = userstats()
+    if (s === undefined) {
+      return 0
+    }
+    return s.wins + s.losses + s.ties;
+  }
+
+  return (
+    <Switch>
+      <Match when={userstats.loading}>
+        Loading Stats...
+      </Match>
+      <Match when={userstats.error}>
+        <></>
+      </Match>
+      <Match when={userstats()}>
+        <>
+          <h2>Duel Stats </h2>
+          <div class="stat-block">
+            <div class="stat">
+              <div class="header" title="Wins">W</div>
+              <div class="count">{userstats()?.wins}</div>
+              <div class="percent">{(userstats()?.wins || 0 / total()) * 100}%</div>
+            </div>
+            <div>-</div>
+            <div class="stat">
+              <div class="header" title="Losses">L</div>
+              <div class="count">{userstats()?.losses}</div>
+              <div class="percent">{(userstats()?.losses || 0 / total()) * 100}%</div>
+            </div>
+            <div>-</div>
+            <div class="stat">
+              <div class="header" title="Ties">T</div>
+              <div class="count">{userstats()?.ties}</div>
+              <div class="percent">{(userstats()?.ties || 0 / total()) * 100}%</div>
+            </div>
+          </div>
+        </>
+      </Match>
+    </Switch>
+  )
+}

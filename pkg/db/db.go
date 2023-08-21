@@ -6,13 +6,13 @@ import (
 )
 
 type Knife struct {
-	ID         int
-	InstanceID int
+	ID         int64
+	InstanceID int64
 	Name       string
 	Author     string
-	AuthorID   int
+	AuthorID   int64
 	Owner      string
-	OwnerID    int
+	OwnerID    int64
 	Rarity     string
 	ImageName  string
 	Verified   bool
@@ -23,10 +23,10 @@ type Knife struct {
 }
 
 type KnifeType struct {
-	ID         int
+	ID         int64
 	Name       string
 	Author     string
-	AuthorID   int
+	AuthorID   int64
 	Rarity     string
 	ImageName  string
 	Deleted    bool
@@ -35,7 +35,7 @@ type KnifeType struct {
 }
 
 type User struct {
-	ID         int
+	ID         int64
 	Name       string
 	LookupName string
 	TwitchID   string
@@ -44,7 +44,7 @@ type User struct {
 }
 
 type UserAuth struct {
-	UserID       int
+	UserID       int64
 	Token        []byte
 	AccessToken  string
 	RefreshToken string
@@ -74,31 +74,40 @@ type CombatReport struct {
 	CreatedAt    time.Time
 }
 
+type CombatOutcome struct {
+	FightID       int64
+	UserID        int64
+	CollectableID int64
+	Outcome       string
+}
+
+type CombatStats = map[string]int
+
 type KnifeDB interface {
 	GetLatestPulls(ctx context.Context) ([]*Knife, error)
-	GetKnife(ctx context.Context, knifeID int) (*Knife, error)
-	GetKnivesForUsername(ctx context.Context, username string) ([]*Knife, error)
+	GetKnife(ctx context.Context, knifeID int64) (*Knife, error)
+	GetKnivesForUser(ctx context.Context, userID int64) ([]*Knife, error)
 
 	GetUsers(ctx context.Context, substr string) ([]*User, error)
-	GetUserByID(ctx context.Context, id int) (*User, error)
+	GetUserByID(ctx context.Context, id int64) (*User, error)
 	GetUserByTwitchID(ctx context.Context, id string) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
 
-	EquipKnifeForUser(ctx context.Context, userID int, KnifeID int) error
-	GetEquippedKnifeForUser(ctx context.Context, id int) (*Knife, error)
+	EquipKnifeForUser(ctx context.Context, userID int64, KnifeID int64) error
+	GetEquippedKnifeForUser(ctx context.Context, id int64) (*Knife, error)
 
 	CreateUser(ctx context.Context, user *User) (*User, error)
-
-	PullKnife(ctx context.Context, userID int, knifename string, subscriber bool, verified bool, edition_id int) (*Knife, error)
 	CreateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeType, error)
 	CreateEdition(ctx context.Context, edition *Edition) (*Edition, error)
+	IssueCollectable(ctx context.Context, knife *Knife, source string) (*Knife, error)
 
 	GetCollection(ctx context.Context, getDeleted bool) ([]*KnifeType, error)
-	GetKnifeType(ctx context.Context, id int, getDeleted bool, getUnapproved bool) (*KnifeType, error)
+	GetKnifeType(ctx context.Context, id int64, getDeleted bool, getUnapproved bool) (*KnifeType, error)
+	GetKnifeTypeByName(ctx context.Context, name string) (*KnifeType, error)
 	GetKnifeTypesByRarity(ctx context.Context, rarity string) ([]*KnifeType, error)
 
 	GetPendingKnives(ctx context.Context) ([]*KnifeType, error)
-	ApproveKnifeType(ctx context.Context, id int, userID int) (*KnifeType, error)
+	ApproveKnifeType(ctx context.Context, id int64, userID int64) (*KnifeType, error)
 
 	UpdateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeType, error)
 	DeleteKnifeType(ctx context.Context, knife *KnifeType) error
@@ -108,10 +117,9 @@ type KnifeDB interface {
 	// Pull Weights
 	GetWeights(ctx context.Context) ([]*PullWeight, error)
 	SetWeights(ctx context.Context, weights []*PullWeight) ([]*PullWeight, error)
-	IssueCollectable(ctx context.Context, collectableID int, userID int, subscriber bool, verified bool, editionID int, source string) (*Knife, error)
 
 	// ImageUpload Log
-	CreateImageUpload(ctx context.Context, id int64, authorID int, path string, uploadname string) error
+	CreateImageUpload(ctx context.Context, id int64, authorID int64, path string, uploadname string) error
 
 	// Twitch Auth
 	GetAuth(ctx context.Context, token []byte) (*UserAuth, error)
@@ -120,6 +128,10 @@ type KnifeDB interface {
 	// Combat Reports
 	GetCombatReport(ctx context.Context, id int64) (*CombatReport, error)
 	CreateCombatReport(ctx context.Context, report *CombatReport) (*CombatReport, error)
+
+	// Get CombatStats
+	GetCombatStatsForUser(ctx context.Context, userID int64) (CombatStats, error)
+	GetCombatStatsForKnife(ctx context.Context, knifeID int64) (CombatStats, error)
 
 	Close(context.Context) error
 }
