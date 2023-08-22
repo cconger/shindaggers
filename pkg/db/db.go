@@ -107,6 +107,7 @@ type KnifeDB interface {
 	GetEquippedKnifeForUser(ctx context.Context, id int64) (*Knife, error)
 
 	CreateUser(ctx context.Context, user *User) (*User, error)
+	UpdateUser(ctx context.Context, user *User) (*User, error)
 	CreateKnifeType(ctx context.Context, knife *KnifeType) (*KnifeType, error)
 	CreateEdition(ctx context.Context, edition *Edition) (*Edition, error)
 	IssueCollectable(ctx context.Context, knife *Knife, source string) (*Knife, error)

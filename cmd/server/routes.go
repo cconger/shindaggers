@@ -121,6 +121,17 @@ func (s *Server) LoginResponseHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if user.Name != twitchUser.DisplayName {
+		// We need to update this user
+		user.Name = twitchUser.DisplayName
+		user.LookupName = twitchUser.Login
+
+		user, err = s.db.UpdateUser(ctx, user)
+		if err != nil {
+			slog.Error("failed updating usernames for user", "id", user.ID, "err", err)
+		}
+	}
+
 	token, err := createAuthToken()
 	if err != nil {
 		slog.Error("creating auth token", "err", err)

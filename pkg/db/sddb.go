@@ -559,6 +559,48 @@ func (sd *SDDB) CreateUser(ctx context.Context, user *User) (*User, error) {
 	}, nil
 }
 
+var updateUserQuery = `UPDATE users SET twitch_name = ?, lookup_name = ?, twitch_id = ? WHERE id = ?;`
+
+func (sd *SDDB) UpdateUser(ctx context.Context, user *User) (*User, error) {
+	if user == nil {
+		return nil, fmt.Errorf("user cannot be nil")
+	}
+
+	if user.ID == 0 {
+		return nil, fmt.Errorf("user ID must be specified")
+	}
+
+	if user.Name == "" {
+		return nil, fmt.Errorf("username must be specified")
+	}
+
+	lookupName := user.LookupName
+	if lookupName == "" {
+		lookupName = strings.ToLower(user.Name)
+	}
+
+	var query *sql.Stmt
+	var err error
+	query, err = sd.db.Prepare(updateUserQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = query.ExecContext(ctx, user.Name, lookupName, user.TwitchID, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &User{
+		ID:         user.ID,
+		Name:       user.Name,
+		LookupName: lookupName,
+		TwitchID:   user.TwitchID,
+		Admin:      false,
+		CreatedAt:  time.Now(),
+	}, nil
+}
+
 var queryUserAuthByToken = `
 SELECT
   user_id,
