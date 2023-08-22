@@ -104,6 +104,7 @@ func (s *Server) LoginResponseHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			user, err = s.db.CreateUser(ctx, &db.User{
+				ID:         s.idGenerator.Generate().Int64(),
 				Name:       twitchUser.DisplayName,
 				LookupName: twitchUser.Login,
 				TwitchID:   twitchUser.ID,

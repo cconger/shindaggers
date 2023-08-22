@@ -1405,3 +1405,129 @@ func (s *Server) getUserStats(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 }
+
+type EventUsersStats struct {
+	User  User      `json:"user"`
+	Stats UserStats `json:"stats"`
+}
+
+type EventStats struct {
+	Leaderboard  []EventUsersStats           `json:"leaderboard"`
+	Collectables map[int64]IssuedCollectable `json:"collectables"`
+	LastFights   []FightRecord               `json:"last_fights"`
+}
+
+type FightRecord struct {
+	ID             string    `json:"id"`
+	UserIDs        []string  `json:"user_ids"`
+	CollectableIDs []string  `json:"collectable_ids"`
+	Outcomes       []int     `json:"outcomes"`
+	Timestamp      time.Time `json:"time"`
+}
+
+func FightRecordFromCombatReport(cr *db.CombatReport) FightRecord {
+	fr := FightRecord{
+		ID:             strconv.FormatInt(cr.ID, 10),
+		UserIDs:        make([]string, len(cr.Participants)),
+		CollectableIDs: make([]string, len(cr.Knives)),
+		Outcomes:       cr.Outcomes,
+		Timestamp:      cr.CreatedAt,
+	}
+
+	for i, id := range cr.Participants {
+		fr.UserIDs[i] = strconv.FormatInt(id, 10)
+	}
+
+	for i, id := range cr.Knives {
+		fr.CollectableIDs[i] = strconv.FormatInt(id, 10)
+	}
+
+	return fr
+}
+
+func (s *Server) getEventStats(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	vars := mux.Vars(r)
+
+	eventSlug, ok := vars["event"]
+	if !ok {
+		serveAPIErr(w, fmt.Errorf("event required"), http.StatusBadRequest, "Event Slug Required")
+		return
+	}
+
+	reports, err := s.db.GetCombatReportsForEvent(ctx, eventSlug)
+	if err != nil {
+		serveAPIErr(w, fmt.Errorf("error getting reports: %w", err), http.StatusInternalServerError, "Error loading event details")
+		return
+	}
+
+	stats := make(map[int64]*UserStats)
+	userIds := make([]int64, 0)
+	knifeIds := make([]int64, 0)
+	fights := make([]FightRecord, len(reports))
+	for idx, r := range reports {
+		userIds = append(userIds, r.Participants...)
+		knifeIds = append(knifeIds, r.Knives...)
+
+		for i, u := range r.Participants {
+			if _, ok := stats[u]; !ok {
+				stats[u] = &UserStats{}
+			}
+			switch r.Outcomes[i] {
+			case 1:
+				stats[u].Wins++
+			case 0:
+				stats[u].Ties++
+			case -1:
+				stats[u].Losses++
+			default:
+				slog.Warn("unknown outcome", "outcome", r.Outcomes[i])
+			}
+		}
+
+		fights[idx] = FightRecordFromCombatReport(r)
+	}
+
+	// Get users
+	users, err := s.db.GetUsersByID(ctx, userIds...)
+	if err != nil {
+		serveAPIErr(w, fmt.Errorf("error getting users: %w", err), http.StatusInternalServerError, "Error loading event details")
+		return
+	}
+
+	userStats := make([]EventUsersStats, len(users))
+	for i, u := range users {
+		userStats[i] = EventUsersStats{
+			User: User{
+				ID:   strconv.FormatInt(u.ID, 10),
+				Name: u.Name,
+			},
+			Stats: *stats[u.ID],
+		}
+	}
+
+	slices.SortFunc(userStats, func(a EventUsersStats, b EventUsersStats) int {
+		aScore := a.Stats.Wins*4 + a.Stats.Ties
+		bScore := b.Stats.Wins*4 + b.Stats.Ties
+		return bScore - aScore
+	})
+
+	// Get knives
+	knives, err := s.db.GetKnives(ctx, knifeIds...)
+	if err != nil {
+		serveAPIErr(w, fmt.Errorf("error getting knives: %w", err), http.StatusInternalServerError, "Error loading event details")
+		return
+	}
+
+	collectables := make(map[int64]IssuedCollectable)
+	for _, k := range knives {
+		collectables[k.InstanceID] = IssuedCollectableFromDBKnife(k)
+	}
+
+	serveAPIPayload(w, EventStats{
+		Leaderboard:  userStats,
+		Collectables: collectables,
+		LastFights:   fights,
+	})
+}

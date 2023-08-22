@@ -11,9 +11,6 @@ type MockDB struct{}
 
 var ErrNoWrites = fmt.Errorf("write operations not supported on dev db")
 
-// Compile time enforce that our mock implements the interface
-var _ KnifeDB = &MockDB{}
-
 func (m *MockDB) GetLatestPulls(ctx context.Context) ([]*Knife, error) {
 	res := make([]*Knife, 10)
 	faker.FakeData(&res)

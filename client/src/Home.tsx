@@ -22,7 +22,7 @@ const fetchLatest = async (): Promise<IssuedCollectable[]> => {
 
 const rtfl = new Intl.RelativeTimeFormat('en', { numeric: 'always', style: 'long' });
 
-const timeAgo = (dstr: string): string => {
+export const timeAgo = (dstr: string): string => {
   let d = new Date(dstr);
   let now = Date.now();
 

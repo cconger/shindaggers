@@ -79,6 +79,14 @@ type CombatOutcome struct {
 	UserID        int64
 	CollectableID int64
 	Outcome       string
+	EventID       *int64
+}
+
+type Event struct {
+	ID          int64
+	Name        string
+	Description string
+	CreatedAt   time.Time
 }
 
 type CombatStats = map[string]int
@@ -86,10 +94,12 @@ type CombatStats = map[string]int
 type KnifeDB interface {
 	GetLatestPulls(ctx context.Context) ([]*Knife, error)
 	GetKnife(ctx context.Context, knifeID int64) (*Knife, error)
+	GetKnives(ctx context.Context, knifeID ...int64) ([]*Knife, error)
 	GetKnivesForUser(ctx context.Context, userID int64) ([]*Knife, error)
 
 	GetUsers(ctx context.Context, substr string) ([]*User, error)
 	GetUserByID(ctx context.Context, id int64) (*User, error)
+	GetUsersByID(ctx context.Context, ids ...int64) ([]*User, error)
 	GetUserByTwitchID(ctx context.Context, id string) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
 
@@ -128,10 +138,15 @@ type KnifeDB interface {
 	// Combat Reports
 	GetCombatReport(ctx context.Context, id int64) (*CombatReport, error)
 	CreateCombatReport(ctx context.Context, report *CombatReport) (*CombatReport, error)
+	GetCombatReportsForEvent(ctx context.Context, event string) ([]*CombatReport, error)
 
 	// Get CombatStats
 	GetCombatStatsForUser(ctx context.Context, userID int64) (CombatStats, error)
 	GetCombatStatsForKnife(ctx context.Context, knifeID int64) (CombatStats, error)
+
+	// Events
+	// CreateEvent(ctx context.Context, event *Event) (*Event, error)
+	// GetEvent(ctx context.Context, id int64) (*Event, error)
 
 	Close(context.Context) error
 }

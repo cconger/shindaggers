@@ -1,0 +1,76 @@
+.event {
+  width: 750px;
+  margin: 0 auto;
+}
+.leaderboard-entry {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.2em;
+}
+
+.leaderboard-entry .name {
+  font-size: 28px;
+  text-transform: uppercase;
+}
+
+.leaderboard-entry .stats {
+  font-size: 28px;
+  font-weight: 300;
+}
+
+.leaderboard-header {
+  font-size: 20px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-bottom: 1px solid black;
+}
+
+.fight-entry {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  height: 100px;
+}
+
+.fight-entry .participant {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  width: 50%;
+}
+
+.fight-entry .participant.win {
+  background: rgba(0, 255, 0, 0.2);
+}
+
+.fight-entry .participant.lose {
+  background: rgba(255, 0, 0, 0.2);
+}
+
+.fight-entry .participant.tie {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.fight-entry .participant.right {
+  flex-direction: row-reverse;
+}
+
+.fight-entry .participant .name {
+  font-size: 20px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin: 0 1em;
+}
+
+.fight-entry .participant img {
+  position: relative;
+  top: -10px;
+  height: 150px;
+}
+
+.fight-entry .participant.left img {
+  transform: scaleX(-1);
+}

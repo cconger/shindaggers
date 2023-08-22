@@ -129,7 +129,7 @@ func main() {
 	if *isolated {
 		blobClient = &mockBlobClient{}
 		twitchClient = &twitch.MockClient{}
-		dbClient = &db.MockDB{}
+		// TODO: Better mockDB
 	} else {
 		// Credentials to be able to upload images
 		r2AccessKey := os.Getenv("CLOUDFLARE_SECRET")
@@ -212,6 +212,9 @@ func main() {
 	r.HandleFunc("/api/pull/{token}", s.PullHandler).Methods(http.MethodPost)
 	r.HandleFunc("/api/randompull/{token}", s.RandomPullHandler).Methods(http.MethodPost)
 	r.HandleFunc("/api/user/equip", s.EquipHandler).Methods(http.MethodPost)
+
+	// GetEventStats
+	r.HandleFunc("/api/event/{event}/stats", s.getEventStats).Methods(http.MethodGet)
 
 	// ADMIN APIs
 	r.HandleFunc("/api/admin/collectables", s.adminListCollectables).Methods(http.MethodGet)

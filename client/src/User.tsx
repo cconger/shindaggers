@@ -145,7 +145,7 @@ export const Percentage: Component<PercentageProps> = (props) => {
 
   return (
     <Show when={props.denominator !== 0} fallback="-">
-      {value()}%
+      {value().toFixed(1)}%
     </Show>
   )
 }

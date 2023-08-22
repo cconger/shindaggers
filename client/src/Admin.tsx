@@ -66,6 +66,7 @@ const createCollectable = async (c: AdminCollectable): Promise<AdminCollectable>
 }
 
 export const AdminPage: Component = () => {
+  // TODO: Split these into individual pages
   return (
     <>
       <h1>Admin Page</h1>
@@ -75,6 +76,9 @@ export const AdminPage: Component = () => {
 
       <h2>New Knife</h2>
       <CollectableForm preview onSubmit={createCollectable} />
+
+      <h2>Events</h2>
+      <EventsList />
 
       <h2>Collectables</h2>
       <CollectableList />
@@ -98,6 +102,18 @@ const Token: Component = () => {
       </Show>
     </div >
   );
+}
+
+const EventsList: Component = () => {
+  return (
+    <div>
+      <div class="collectable-table">
+        <div class="header">ID</div>
+        <div class="header">Name</div>
+        <div class="header">Slug</div>
+      </div>
+    </div>
+  )
 }
 
 type AdminCollectableList = {

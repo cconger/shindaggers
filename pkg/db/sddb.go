@@ -120,7 +120,19 @@ func (sd *SDDB) GetLatestPulls(ctx context.Context) ([]*Knife, error) {
 	return knives, nil
 }
 
-var getKnifeQuery = `
+func (sd *SDDB) GetKnife(ctx context.Context, knifeID int64) (*Knife, error) {
+	k, err := sd.GetKnives(ctx, knifeID)
+	if err != nil {
+		return nil, err
+	}
+	if len(k) == 0 {
+		return nil, ErrNotFound
+	}
+
+	return k[0], nil
+}
+
+var getKnifesQuery = `
 SELECT
   knives.id,
   knife_ownership.instance_id,
@@ -141,55 +153,65 @@ JOIN knives ON knife_ownership.knife_id = knives.id
 LEFT JOIN users owner ON knife_ownership.user_id = owner.id
 LEFT JOIN users author ON knives.author_id = author.id
 JOIN editions ON knife_ownership.edition_id = editions.id
-WHERE knife_ownership.instance_id = ?
+WHERE knife_ownership.instance_id IN (%s)
 AND knives.approved_by is not null;
 `
 
-func (sd *SDDB) GetKnife(ctx context.Context, knifeID int64) (*Knife, error) {
-	query, err := sd.db.Prepare(getKnifeQuery)
+func (sd *SDDB) GetKnives(ctx context.Context, knifeID ...int64) ([]*Knife, error) {
+	if len(knifeID) == 0 {
+		return nil, nil
+	}
+
+	query, err := sd.db.Prepare(fmt.Sprintf(getKnifesQuery, strings.Repeat("?,", len(knifeID)-1)+"?"))
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := query.QueryContext(ctx, knifeID)
+	idList := []interface{}{}
+	for _, id := range knifeID {
+		idList = append(idList, id)
+	}
+
+	rows, err := query.QueryContext(ctx, idList...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	if !rows.Next() {
-		return nil, ErrNotFound
+	knives := []*Knife{}
+	for rows.Next() {
+		var obtainedAt string
+
+		var knife Knife
+		err = rows.Scan(
+			&knife.ID,
+			&knife.InstanceID,
+			&knife.Name,
+			&knife.Author,
+			&knife.AuthorID,
+			&knife.Owner,
+			&knife.OwnerID,
+			&knife.Rarity,
+			&knife.ImageName,
+			&knife.Subscriber,
+			&knife.Verified,
+			&knife.Edition,
+			&obtainedAt,
+			&knife.Deleted,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		knife.ObtainedAt, err = parseTimestamp(obtainedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		knives = append(knives, &knife)
 	}
 
-	var obtainedAt string
-
-	var knife Knife
-	err = rows.Scan(
-		&knife.ID,
-		&knife.InstanceID,
-		&knife.Name,
-		&knife.Author,
-		&knife.AuthorID,
-		&knife.Owner,
-		&knife.OwnerID,
-		&knife.Rarity,
-		&knife.ImageName,
-		&knife.Subscriber,
-		&knife.Verified,
-		&knife.Edition,
-		&obtainedAt,
-		&knife.Deleted,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	knife.ObtainedAt, err = parseTimestamp(obtainedAt)
-	if err != nil {
-		return nil, err
-	}
-
-	return &knife, nil
+	return knives, nil
 }
 
 var getKnifeForUserQuery = `
@@ -268,7 +290,20 @@ func (sd *SDDB) GetKnivesForUser(ctx context.Context, userID int64) ([]*Knife, e
 	return knives, nil
 }
 
-var getUserIDQuery = `
+func (sd *SDDB) GetUserByID(ctx context.Context, id int64) (*User, error) {
+	us, err := sd.GetUsersByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(us) == 0 {
+		return nil, ErrNotFound
+	}
+
+	return us[0], nil
+}
+
+var getMultipleUserIDQuery = `
 SELECT
   id,
   twitch_name,
@@ -277,46 +312,56 @@ SELECT
   IFNULL(twitch_id, '') as twitch_id,
   created_at
 FROM users
-WHERE id = ?;
+WHERE id IN (%s);
 `
 
-func (sd *SDDB) GetUserByID(ctx context.Context, id int64) (*User, error) {
-	query, err := sd.db.Prepare(getUserIDQuery)
+func (sd *SDDB) GetUsersByID(ctx context.Context, ids ...int64) ([]*User, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	query, err := sd.db.Prepare(fmt.Sprintf(getMultipleUserIDQuery, strings.Repeat("?,", len(ids)-1)+"?"))
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := query.QueryContext(ctx, id)
+	idList := []interface{}{}
+	for _, id := range ids {
+		idList = append(idList, id)
+	}
+
+	rows, err := query.QueryContext(ctx, idList...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	if !rows.Next() {
-		return nil, ErrNotFound
+	users := []*User{}
+	for rows.Next() {
+		var createdAt string
+
+		var user User
+		err = rows.Scan(
+			&user.ID,
+			&user.Name,
+			&user.LookupName,
+			&user.Admin,
+			&user.TwitchID,
+			&createdAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		user.CreatedAt, err = parseTimestamp(createdAt)
+		if err != nil {
+			return nil, err
+		}
+
+		users = append(users, &user)
 	}
 
-	var createdAt string
-
-	var user User
-	err = rows.Scan(
-		&user.ID,
-		&user.Name,
-		&user.LookupName,
-		&user.Admin,
-		&user.TwitchID,
-		&createdAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	user.CreatedAt, err = parseTimestamp(createdAt)
-	if err != nil {
-		return nil, err
-	}
-
-	return &user, nil
+	return users, nil
 }
 
 var getUserTwitchIDQuery = `
@@ -1417,7 +1462,12 @@ func (sd *SDDB) CreateCombatReport(ctx context.Context, report *CombatReport) (*
 	}
 
 	for idx, user := range report.Participants {
-		_, err := tx.ExecContext(ctx, insertCombatOutcomeQuery, report.ID, user, report.Knives[idx], outcomeFromInt(report.Outcomes[idx]))
+		var knifeID *int64
+		if idx < len(report.Knives) {
+			knifeID = &report.Knives[idx]
+		}
+
+		_, err := tx.ExecContext(ctx, insertCombatOutcomeQuery, report.ID, user, knifeID, outcomeFromInt(report.Outcomes[idx]))
 		if err != nil {
 			return nil, fmt.Errorf("creating outcome entry: %w", err)
 		}
@@ -1492,6 +1542,69 @@ func (sd *SDDB) GetCombatStatsForKnife(ctx context.Context, knifeID int64) (Comb
 	}
 
 	return stats, nil
+}
+
+var getCombatReportsForEventQuery = `
+SELECT
+  id,
+  participants,
+  outcomes,
+  knives,
+  event,
+  created_at
+FROM fights
+WHERE event = ?
+ORDER BY created_at DESC;
+`
+
+func (sd *SDDB) GetCombatReportsForEvent(ctx context.Context, event string) ([]*CombatReport, error) {
+	rows, err := sd.db.QueryContext(ctx, getCombatReportsForEventQuery, event)
+	if err != nil {
+		return nil, fmt.Errorf("querying for fights by event: %w", err)
+	}
+
+	reports := []*CombatReport{}
+
+	for rows.Next() {
+		var report CombatReport
+		var participants string
+		var outcomes string
+		var knives string
+		var createdAt string
+
+		err := rows.Scan(
+			&report.ID,
+			&participants,
+			&outcomes,
+			&knives,
+			&report.Event,
+			&createdAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scanning row: %w", err)
+		}
+
+		err = json.Unmarshal([]byte(participants), &report.Participants)
+		if err != nil {
+			return nil, fmt.Errorf("decoding participants: %w", err)
+		}
+		err = json.Unmarshal([]byte(outcomes), &report.Outcomes)
+		if err != nil {
+			return nil, fmt.Errorf("decoding outcomes: %w", err)
+		}
+		err = json.Unmarshal([]byte(knives), &report.Knives)
+		if err != nil {
+			return nil, fmt.Errorf("decoding knives: %w", err)
+		}
+		report.CreatedAt, err = parseTimestamp(createdAt)
+		if err != nil {
+			return nil, fmt.Errorf("decoding createdAt: %w", err)
+		}
+
+		reports = append(reports, &report)
+	}
+
+	return reports, nil
 }
 
 func outcomeFromInt(outcome int) string {

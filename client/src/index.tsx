@@ -13,6 +13,7 @@ import { ButtonTest } from './Button';
 import { AdminWrapper, AdminPage, AdminKnife } from './Admin';
 import { FourOhFour } from './FourOhFour';
 import { Creator } from './Creator';
+import { Event } from './Event';
 
 const root = document.getElementById('root');
 
@@ -45,6 +46,7 @@ render(() => (
       <Route path="/catalog" component={Catalog} />
       <Route path="/catalog/:id" component={CatalogCard} />
       <Route path="/creator" component={Creator} />
+      <Route path="/event/:slug" component={Event} />
       <Route path="/admin" component={AdminWrapper}>
         <Route path="/" component={AdminPage} />
         <Route path="/knife/:id" component={AdminKnife} />
