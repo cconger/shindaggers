@@ -112,23 +112,40 @@ export const DuelStats: Component<DuelStatsProps> = (props) => {
             <div class="stat">
               <div class="header" title="Wins">W</div>
               <div class="count">{userstats()?.wins}</div>
-              <div class="percent">{(userstats()?.wins || 0 / total()) * 100}%</div>
+              <div class="percent"><Percentage numerator={userstats()?.wins || 0} denominator={total()} /></div>
             </div>
             <div>-</div>
             <div class="stat">
               <div class="header" title="Losses">L</div>
               <div class="count">{userstats()?.losses}</div>
-              <div class="percent">{(userstats()?.losses || 0 / total()) * 100}%</div>
+              <div class="percent"><Percentage numerator={userstats()?.losses || 0} denominator={total()} /></div>
             </div>
             <div>-</div>
             <div class="stat">
               <div class="header" title="Ties">T</div>
               <div class="count">{userstats()?.ties}</div>
-              <div class="percent">{(userstats()?.ties || 0 / total()) * 100}%</div>
+              <div class="percent"><Percentage numerator={userstats()?.ties || 0} denominator={total()} /></div>
             </div>
           </div>
         </>
       </Match>
     </Switch>
+  )
+}
+
+type PercentageProps = {
+  numerator: number;
+  denominator: number;
+}
+
+export const Percentage: Component<PercentageProps> = (props) => {
+  let value = () => {
+    return (props.numerator / props.denominator) * 100;
+  }
+
+  return (
+    <Show when={props.denominator !== 0} fallback="-">
+      {value()}%
+    </Show>
   )
 }
