@@ -1,6 +1,7 @@
 /* @refresh reload */
 import { render } from 'solid-js/web';
 import { Router, Routes, Route, A } from '@solidjs/router';
+import { lazy } from 'solid-js';
 
 import './index.css';
 import { Catalog } from './pages/Catalog';
@@ -13,6 +14,21 @@ import { UITest } from './pages/UITest';
 import { FourOhFour } from './pages/FourOhFour';
 import { Creator } from './pages/Creator';
 import { Event } from './pages/Event';
+
+const AdminWrapper = lazy(async () => {
+  let admin = await import('./pages/Admin')
+  return { default: admin.AdminWrapper };
+});
+
+const AdminPage = lazy(async () => {
+  let admin = await import('./pages/Admin')
+  return { default: admin.AdminPage };
+});
+
+const AdminKnife = lazy(async () => {
+  let admin = await import('./pages/Admin')
+  return { default: admin.AdminKnife };
+});
 
 const root = document.getElementById('root');
 
@@ -47,6 +63,10 @@ render(() => (
       <Route path="/creator" component={Creator} />
       <Route path="/event/:slug" component={Event} />
       <Route path="/uitest" component={UITest} />
+      <Route path="/admin" component={AdminWrapper}>
+        <Route path="/" component={AdminPage} />
+        <Route path="/knife/:id" component={AdminKnife} />
+      </Route>
       <Route path="*" component={FourOhFour} />
     </Routes>
   </Router>

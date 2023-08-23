@@ -246,7 +246,6 @@ func main() {
 
 	// Overlay is a mini SPA for OBS
 	r.HandleFunc("/overlay/{id}", s.overlayHandler).Methods(http.MethodGet)
-	r.PathPrefix("/admin").HandlerFunc(s.adminHandler)
 	r.PathPrefix("/assets").HandlerFunc(s.assetHandler)
 	r.PathPrefix("/").HandlerFunc(s.spaHandler)
 
