@@ -1,5 +1,6 @@
 import type { Component } from 'solid-js';
-import type { Collectable } from '../resources';
+import type { Collectable, IssuedCollectable } from '../resources';
+import { Show } from 'solid-js';
 import { rarityclass } from '../resources';
 import TextArtBG from './TextArtBG';
 import './MiniCard.css';
@@ -10,11 +11,9 @@ type MiniCardProps = {
 }
 
 export const MiniCard: Component<MiniCardProps> = (props) => {
-  const { collectable } = props;
+  const imageURL = "https://images.shindaggers.io/images/" + props.collectable.image_path;
 
-  const imageURL = "https://images.shindaggers.io/images/" + collectable.image_path;
-
-  const cls = ["mini-card", rarityclass(collectable.rarity)].join(" ");
+  const cls = ["mini-card", rarityclass(props.collectable.rarity)].join(" ");
 
   return (
     <div class={cls}>
@@ -25,11 +24,11 @@ export const MiniCard: Component<MiniCardProps> = (props) => {
       </svg>
 
       <div class="micro-title">
-        {collectable.name}
+        {props.collectable.name}
       </div>
 
       <div class="macro-title">
-        <TextArtBG name={collectable.name} lineHeight={50} size={{ width: 200, height: 250 }} />
+        <TextArtBG name={props.collectable.name} lineHeight={50} size={{ width: 200, height: 250 }} />
       </div>
 
       <div class="card-image">
@@ -44,3 +43,23 @@ export const MiniCard: Component<MiniCardProps> = (props) => {
     </div>
   );
 };
+
+
+export const MiniListing = (props: { collectable: IssuedCollectable }) => {
+  const cls = ["mini-listing", rarityclass(props.collectable.rarity)].join(" ");
+
+  return (
+    <div class={cls}>
+      <div class="hover"><MiniCard collectable={props.collectable} /></div>
+      <div class="micro-title">{props.collectable.name}</div>
+      <div class="badges">
+        <Show when={props.collectable.verified}>
+          <div class="verified" title="Verified Issue"></div>
+        </Show>
+        <Show when={props.collectable.subscriber}>
+          <div class="subscribed" title="Subscriber Issue"></div>
+        </Show>
+      </div>
+    </div>
+  )
+}

@@ -1,7 +1,7 @@
 import type { Component } from 'solid-js';
 import { Show, For, createResource, Switch, Match } from 'solid-js';
 import { A, useParams } from '@solidjs/router';
-import { MiniCard } from '../components/MiniCard';
+import { MiniCard, MiniListing } from '../components/MiniCard';
 import './Catalog.css';
 import type { IssuedCollectable, User, UserDuelStats } from '../resources';
 import { DistributionChart } from '../components/Chart';
@@ -33,45 +33,105 @@ export const UserCollection: Component = (props) => {
   }
 
   return (
-    <Switch>
-      <Match when={usercollection.loading}>
-        <div>Loading...</div>
-      </Match>
-      <Match when={usercollection.error}>
-        <div>Error loading catalog</div>
-      </Match>
-      <Match when={usercollection()}>
-        <div class="catalog-header">
-          <div class="catalog-title">
-            <h1>{usercollection()!.User.name}'s Collection</h1>
-            <h3>{total()} Knives</h3>
-            <DuelStats user={usercollection()!.User} />
-          </div>
-          <Show when={usercollection()!.Equipped}>
-            <div class="catalog-equipped">
-              <h2>Equipped</h2>
-              <A href={`/knife/${usercollection()!.Equipped!.instance_id}`}>
-                <MiniCard collectable={usercollection()!.Equipped!} />
-              </A>
-            </div>
-          </Show>
-          <div class="catalog-stats">
-            <DistributionChart collection={usercollection()!.Collectables} />
-          </div>
-        </div>
-        <div class="catalog">
-          <For each={usercollection()!.Collectables} >
-            {(item) => (
-              <A href={`/knife/${item.instance_id}`}>
-                <MiniCard collectable={item} />
-              </A>
-            )}
-          </For>
-        </div>
-      </Match>
-    </Switch>
+    <div class="user">
+      <Switch>
+        <Match when={usercollection.loading}>
+          <div>Loading...</div>
+        </Match>
+        <Match when={usercollection.error}>
+          <div>Error loading catalog</div>
+        </Match>
+        <Match when={usercollection()}>
+          <UserProfile user={usercollection()!} />
+        </Match>
+      </Switch>
+    </div>
   );
 };
+
+
+const UserProfile = (props: { user: UserCollection }) => {
+  return (
+    <div>
+      <div class="header">
+        <h1>{props.user.User.name}</h1>
+      </div>
+      <div class="profile">
+        <section class="profile-card">
+          <Show when={props.user.Equipped}>
+            <div class="title">Equipped</div>
+            <div class="content">
+              <MiniListing collectable={props.user.Equipped!} />
+            </div>
+          </Show>
+        </section>
+        <section class="profile-card double">
+          <div class="title">Duels</div>
+          <div class="content">
+            <div class="duel-stats">
+              <div class="match-history">
+                <div class="match won"></div>
+                <div class="match-trace"></div>
+                <div class="match lost"></div>
+                <div class="match-trace"></div>
+                <div class="match tied"></div>
+                <div class="match-trace"></div>
+                <div class="match won"></div>
+                <div class="match-trace"></div>
+                <div class="match won"></div>
+                <div class="match-trace"></div>
+                <div class="match won"></div>
+                <div class="match-trace"></div>
+                <div class="match lost"></div>
+              </div>
+              <div class="stats">
+                <div class="stat">
+                  <div class="stat-name">Wins</div>
+                  <div class="stat-value">4</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-name">Ties</div>
+                  <div class="stat-value">1</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-name">Losses</div>
+                  <div class="stat-value">2</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="profile-card double">
+          <div class="title">Collection</div>
+          <div class="content">
+            <div class="collection-list">
+              <div class="controls">
+                <label>
+                  <input type="checkbox" checked />
+                  Show Duplicates
+                </label>
+              </div>
+
+              <For each={props.user.Collectables}>
+                {(collectable) => (
+                  <MiniListing collectable={collectable} />
+                )}
+              </For>
+            </div>
+          </div>
+        </section>
+
+        <section class="profile-card">
+          <div class="title">Stats</div>
+          <div class="content">
+            Chart goes here...
+          </div>
+        </section>
+      </div>
+    </div>
+  )
+}
 
 
 const fetchDuelStats = async (id: string): Promise<UserDuelStats> => {

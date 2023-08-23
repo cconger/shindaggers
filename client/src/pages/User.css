@@ -1,9 +1,51 @@
+.user {
+  background: #121117;
+  color: rgba(252, 252, 252, 1.0);
+  min-height: 100vh;
+}
+
+.user .header {
+  padding: 2em 1em;
+}
+
 .catalog-header {
   margin: 0 1em;
   display: flex;
   justify-content: space-between;
   margin-bottom: 2em;
   flex-direction: row;
+}
+
+.profile {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  column-gap: 20px;
+  row-gap: 20px;
+  margin: 0 30px;
+}
+
+section.profile-card {
+  border: solid thin #1C1B22;
+  min-height: 80px;
+  border-radius: 5px 5px 0 0;
+}
+
+section.profile-card.double {
+  grid-column-start: auto;
+  grid-column-end: span 2;
+}
+
+section.profile-card .title {
+  font-size: 16px;
+  text-transform: uppercase;
+  font-weight: 600;
+  background: #1C1B22;
+  border-radius: 3px 3px 0 0;
+  padding: 0.5em;
+}
+
+section.profile-card .content {
+  padding: 1em;
 }
 
 
@@ -31,10 +73,70 @@
 .stat-block .stat .header {
   font-size: 2em;
   font-weight: 700;
-  color: black;
 }
 
 .stat-block .stat .count {
   font-size: 1.2em;
-  color: black;
 }
+
+.duel-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.duel-stats .stats {
+  display: flex;
+}
+
+.duel-stats .stats .stat {
+  margin: 0 1em;
+  text-align: center;
+}
+
+.duel-stats .stats .stat .stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  padding: 0.5em 0;
+}
+
+.match-history {
+  display: flex;
+  align-items: center;
+}
+
+.match-history .match {
+  width: 50px;
+  height: 50px;
+  border: solid 2px rgba(121,121,121,0.8);
+  border-radius: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.match-history .match:after {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  content: "";
+}
+
+.match-history .match.won:after {
+  background: #afd91a;
+}
+
+.match-history .match.tied:after {
+  background: #afafaf;
+}
+
+.match-history .match.lost:after {
+  background: #bf0413;
+}
+
+.match-history .match-trace {
+  width: 30px;
+  background: rgba(121,121,121,0.8);
+  height: 3px;
+}
+

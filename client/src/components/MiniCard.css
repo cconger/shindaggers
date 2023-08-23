@@ -95,3 +95,84 @@
   height: 200px;
   overflow: hidden;
 }
+
+.mini-listing {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 10px;
+  position: relative;
+  border: solid 4px black;
+  padding: 0 1em;
+}
+
+.mini-listing .micro-title {
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 1em 0;
+}
+
+.mini-listing .hover {
+  top: 50px;
+  right: 0;
+  position: absolute;
+  display: none;
+  z-index: 10;
+}
+
+.mini-listing:hover .hover {
+  display: inherit;
+}
+
+.mini-listing.common {
+  background: #26B800;
+}
+
+.mini-listing.uncommon {
+  background: #005E66;
+}
+
+.mini-listing.rare {
+  background: #510165;
+}
+
+.mini-listing.super-rare {
+  background: #CCCB00;
+}
+
+.mini-listing.ultra-rare {
+  background: #A60000;
+}
+
+.mini-listing .badges {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mini-listing .badges .deleted {
+  width: 38px;
+  height: 38px;
+  border: solid 3px red;
+  color: red;
+  font-size: 24px;
+  border-radius: 5px;
+}
+
+.mini-listing .badges .deleted:before {
+  content: '⚠️';
+}
+
+.mini-listing .badges .subscribed {
+  width: 38px;
+  height: 38px;
+  background: url('https://images.shindaggers.io/images/sub.png') no-repeat;
+}
+
+
+.mini-listing .badges .verified {
+  width: 38px;
+  height: 39px;
+  background: url('https://images.shindaggers.io/images/verified.png') no-repeat;
+}
