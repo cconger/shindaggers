@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-//go:embed client/index.html client/overlay/index.html client/assets
+//go:embed client/index.html client/admin/index.html client/overlay/index.html client/assets
 var assets embed.FS
 
 func (s *Server) assetHandler(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +61,20 @@ func (s *Server) spaHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) overlayHandler(w http.ResponseWriter, r *http.Request) {
 	f, err := assets.Open("client/overlay/index.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer f.Close()
+
+	_, err = io.Copy(w, f)
+	if err != nil {
+		log.Printf("Error writing file: %s", err.Error())
+	}
+}
+
+func (s *Server) adminHandler(w http.ResponseWriter, r *http.Request) {
+	f, err := assets.Open("client/admin/index.html")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
