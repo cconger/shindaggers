@@ -3,17 +3,16 @@ import { render } from 'solid-js/web';
 import { Router, Routes, Route, A } from '@solidjs/router';
 
 import './index.css';
-import { Catalog } from './Catalog';
-import { CatalogCard } from './CatalogCard';
-import { Home } from './Home';
-import { Pull } from './Pull';
-import { IfLoggedIn, NavLogin, LoginLander } from './LoginButton';
-import { UserCollection } from './User';
-import { ButtonTest } from './Button';
-import { AdminWrapper, AdminPage, AdminKnife } from './Admin';
-import { FourOhFour } from './FourOhFour';
-import { Creator } from './Creator';
-import { Event } from './Event';
+import { Catalog } from './pages/Catalog';
+import { CatalogCard } from './pages/CatalogCard';
+import { Home } from './pages/Home';
+import { Pull } from './pages/Pull';
+import { IfLoggedIn, NavLogin, LoginLander } from './components/LoginButton';
+import { UserCollection } from './pages/User';
+import { UITest } from './pages/UITest';
+import { FourOhFour } from './pages/FourOhFour';
+import { Creator } from './pages/Creator';
+import { Event } from './pages/Event';
 
 const root = document.getElementById('root');
 
@@ -47,11 +46,7 @@ render(() => (
       <Route path="/catalog/:id" component={CatalogCard} />
       <Route path="/creator" component={Creator} />
       <Route path="/event/:slug" component={Event} />
-      <Route path="/admin" component={AdminWrapper}>
-        <Route path="/" component={AdminPage} />
-        <Route path="/knife/:id" component={AdminKnife} />
-      </Route>
-      <Route path="/buttontest" component={ButtonTest} />
+      <Route path="/uitest" component={UITest} />
       <Route path="*" component={FourOhFour} />
     </Routes>
   </Router>

@@ -1,9 +1,9 @@
 import type { Component } from 'solid-js';
 import { For, createResource, Switch, Match } from 'solid-js';
 import { A } from '@solidjs/router';
-import { MiniCard } from './MiniCard';
+import { MiniCard } from '../components/MiniCard';
 import './Catalog.css';
-import type { Collectable } from './resources';
+import type { Collectable } from '../resources';
 
 const fetchCatalog = async (): Promise<Collectable[]> => {
   let response = await fetch("/api/catalog")

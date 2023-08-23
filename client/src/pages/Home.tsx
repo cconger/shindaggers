@@ -1,70 +1,57 @@
-import type { Component } from 'solid-js';
-import { createSignal, createResource, Switch, Match, For } from 'solid-js';
+import type { Component, ResourceFetcher } from 'solid-js';
+import { createResource, Switch, Match, For, onMount, onCleanup } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import { Motion } from '@motionone/solid';
-import { LoginButton } from './LoginButton';
-import type { IssuedCollectable } from './resources';
-import { rarityclass } from './resources';
+import { LoginButton } from '../components/LoginButton';
+import type { IssuedCollectable } from '../resources';
+import { rarityclass } from '../resources';
 import { UserSearch } from './Admin';
+import { TimeAgo } from '../components/TimeAgo';
 
 import './Home.css';
 
-const fetchLatest = async (): Promise<IssuedCollectable[]> => {
-  let response = await fetch("/api/latest");
+const fetchLatest: ResourceFetcher<true, IssuedCollectable[], unknown> = async (_, { value, refetching }) => {
+  let req: Promise<Response>
+  if (refetching && value !== undefined && value.length > 0) {
+    let d = new Date(value[0].issued_at);
+
+    req = fetch("/api/latest?since=" + d.getTime());
+  } else {
+    req = fetch("/api/latest");
+  }
+
+  let response = await req;
   if (response.status !== 200) {
     throw new Error("unexecpted status code: " + response.statusText);
   }
-  return await response.json().then((resp) => {
+
+  let collectables = await response.json().then((resp) => {
     if (resp.Collectables === undefined) { throw new Error("unexpected data format"); }
     return resp.Collectables;
   });
+
+  if (value !== undefined) {
+    return [...collectables, ...value]
+  }
+  return collectables;
 }
 
-const rtfl = new Intl.RelativeTimeFormat('en', { numeric: 'always', style: 'long' });
-
-export const timeAgo = (dstr: string): string => {
-  let d = new Date(dstr);
-  let now = Date.now();
-
-  let delta = now - d.getTime();
-
-  if (delta < (1000 * 60)) {
-    return "Just now";
-  }
-
-  if (delta < (1000 * 60 * 60)) {
-    let minutes = Math.round(delta / (1000 * 60));
-    return rtfl.format(-minutes, 'minute');
-  }
-
-  if (delta < (1000 * 60 * 60 * 24)) {
-    let hours = Math.round(delta / (1000 * 60 * 60));
-    return rtfl.format(-hours, 'hour');
-  }
-
-  let days = Math.round(delta / (1000 * 60 * 60 * 24));
-  return rtfl.format(-days, 'day');
-}
-
-export const Home: Component = (props) => {
-  const [latestPulls] = createResource(fetchLatest)
+export const Home: Component = () => {
+  const [latestPulls, { refetch, mutate }] = createResource(fetchLatest)
   const navigate = useNavigate();
 
-  const [search, setSearch] = createSignal("");
+  let pollHandle: number | undefined = undefined;
+  onMount(() => {
+    pollHandle = setInterval(() => {
+      refetch();
+    }, 30 * 1000);
+  });
 
-  const handleKeyPress = (event: KeyboardEvent) => {
-    if (event.key === 'Enter') {
-      if (search() !== "") {
-        navigate("/user/" + search());
-      }
+  onCleanup(() => {
+    if (pollHandle !== undefined) {
+      clearInterval(pollHandle);
     }
-  };
-
-  const lookup = (event: MouseEvent) => {
-    if (search() !== "") {
-      navigate("/user/" + search());
-    }
-  };
+  });
 
   return (
     <div class="split">
@@ -93,15 +80,14 @@ export const Home: Component = (props) => {
         <h2>Latest Pulls</h2>
 
         <Switch>
-          <Match when={latestPulls.loading}><div>Loading...</div></Match>
-          <Match when={latestPulls.error}><div>{latestPulls.error.toString()}</div></Match>
           <Match when={latestPulls()}>
             <For each={latestPulls()}>
               {(item) => (
                 <A href={`/knife/${item.instance_id}`}>
                   <Motion.div
                     class={`pull ${rarityclass(item.rarity)}`}
-                    animate={{ opacity: [0, 1] }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     transition={{ duration: 1, easing: 'ease-in-out' }}
                   >
                     <div class="image">
@@ -110,17 +96,19 @@ export const Home: Component = (props) => {
                     <div class="name">{item.name}</div>
                     <div class="info">
                       <div>PULLED BY {item.owner.name}</div>
-                      <div class="time" title={item.issued_at}>{timeAgo(item.issued_at)}</div>
+                      <div class="time"><TimeAgo timestamp={item.issued_at} /></div>
                     </div>
                   </Motion.div>
                 </A>
               )}
             </For>
           </Match>
+          <Match when={latestPulls.loading} > <div>Loading...</div></Match>
+          <Match when={latestPulls.error}><div>{latestPulls.error.toString()}</div></Match>
 
         </Switch>
       </section >
-    </div>
+    </div >
   );
 }
 

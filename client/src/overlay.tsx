@@ -1,7 +1,7 @@
 import { render } from 'solid-js/web';
 import type { Component } from 'solid-js';
-import { fetchIssuedCollectable } from './Pull';
-import { MiniCard } from './MiniCard';
+import { fetchIssuedCollectable } from './pages/Pull';
+import { MiniCard } from './components/MiniCard';
 import { createResource, Show, Switch, Match } from 'solid-js';
 import { rarityclass } from './resources';
 

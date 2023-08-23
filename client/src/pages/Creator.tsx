@@ -1,9 +1,9 @@
 import type { Component } from 'solid-js';
-import type { AdminCollectable } from './resources';
+import type { AdminCollectable } from '../resources';
 import { createSignal, Show } from 'solid-js';
 import { RequireLogin, CollectableForm } from './Admin';
-import { Rarity, User } from './resources';
-import { useAuthManager } from './LoginButton';
+import { Rarity, User } from '../resources';
+import { useAuthManager } from '../auth';
 
 export const Creator: Component = () => {
   let am = useAuthManager();

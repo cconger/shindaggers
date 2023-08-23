@@ -1,0 +1,78 @@
+
+.form {
+
+}
+
+.form select {
+  height: 43px;
+  font-size: 16px;
+  line-height: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin: 0;
+  width: 308px;
+}
+
+.form input {
+  width: 300px;
+}
+
+.form .image-selector {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+}
+
+.input-button {
+  position: relative;
+  margin: 10px 0;
+}
+
+.input-button .results {
+  position: absolute;
+  bottom: 50px;
+  left: 10px;
+  background: rgb(240, 240, 255);
+  border: solid thin black;
+}
+
+.input-button .results {
+  font-size: 20px;
+  padding: 0;
+}
+
+.input-button .results div {
+  padding: 5px 10px;
+}
+
+.input-button .results div:hover {
+  padding: 5px 10px;
+  background: rgb(180, 180, 188);
+  cursor: pointer;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+}
+
+.or {
+  margin: 0 1em;
+}
+
+.admin-page {
+  margin: 0 3em;
+}
+
+table.collectable-table tr td {
+  padding: 0.25em 0.5em;
+}
+
+table.collectable-table tr {
+  border-bottom: solid thin black;
+}
+
+table.collectable-table thead {
+  font-size: 16px;
+  font-weight: 700;
+}

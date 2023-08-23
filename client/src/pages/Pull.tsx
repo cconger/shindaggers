@@ -1,10 +1,10 @@
 import type { Component } from 'solid-js';
 import { createResource, Show, Switch, Match } from 'solid-js';
 import { useParams, A } from '@solidjs/router';
-import { Card } from './Card';
-import type { IssuedCollectable } from './resources';
-import { useAuthManager } from './LoginButton';
-import { Button } from './Button';
+import { Card } from '../components/Card';
+import type { IssuedCollectable } from '../resources';
+import { useAuthManager } from '../auth';
+import { Button } from '../components/Button';
 
 import './Pull.css';
 

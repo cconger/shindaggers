@@ -1,7 +1,7 @@
 import type { Component } from 'solid-js';
 import { onMount, Show } from 'solid-js';
-import type { IssuedCollectable, Collectable } from './resources';
-import { rarityclass } from './resources';
+import type { IssuedCollectable, Collectable } from '../resources';
+import { rarityclass } from '../resources';
 import TextArtBG from './TextArtBG';
 import './Card.css';
 import VanillaTilt from 'vanilla-tilt';

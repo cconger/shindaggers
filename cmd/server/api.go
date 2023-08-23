@@ -273,8 +273,26 @@ func (s *Server) getLatest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// TODO: Query Param `since` for limiting time
+	var sinceT *time.Time
+	since := r.URL.Query().Get("since")
+	if since != "" {
+		ms, err := strconv.ParseInt(since, 10, 64)
+		if err != nil {
+			serveAPIErr(w, err, http.StatusBadRequest, "since not encoded properly")
+			return
+		}
+		t := time.UnixMilli(ms)
+		sinceT = &t
+	}
 
-	dbk, err := s.db.GetLatestPulls(ctx)
+	var dbk []*db.Knife
+	var err error
+
+	if sinceT == nil {
+		dbk, err = s.db.GetLatestPulls(ctx)
+	} else {
+		dbk, err = s.db.GetLatestPullsSince(ctx, *sinceT)
+	}
 	if err != nil {
 		serveAPIErr(w, err, http.StatusInternalServerError, "Internal Error")
 		return

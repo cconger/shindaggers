@@ -1,6 +1,6 @@
 import type { Component } from 'solid-js';
-import type { Collectable } from './resources';
-import { rarityclass } from './resources';
+import type { Collectable } from '../resources';
+import { rarityclass } from '../resources';
 import TextArtBG from './TextArtBG';
 import './MiniCard.css';
 

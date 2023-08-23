@@ -3,7 +3,6 @@ import { createSignal, Switch, Match } from 'solid-js';
 import { Motion, Presence } from "@motionone/solid";
 
 import "./Button.css";
-import spinner from './spinner.svg';
 
 export type ButtonProps = {
   text: string;
@@ -113,28 +112,6 @@ export const Button: Component<ButtonProps> = (props) => {
           </Match>
         </Switch>
       </Presence>
-    </div>
-  );
-}
-
-export const ButtonTest: Component = (props) => {
-  const success = () => {
-    return new Promise(resolve => setTimeout(resolve, 1000));
-  }
-
-  const fail = () => {
-    return new Promise((_, rej) => setTimeout(rej, 1000));
-  }
-
-  const spin = () => {
-    return new Promise(() => { });
-  }
-
-  return (
-    <div style="display: flex; flex-direction: column;">
-      <Button text="Click to Succeed" onClick={success} />
-      <Button text="Click to Fail" onClick={fail} />
-      <Button text="Click to Spin" onClick={spin} />
     </div>
   );
 }

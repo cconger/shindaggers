@@ -2,8 +2,8 @@ import type { Component } from "solid-js";
 import { A } from '@solidjs/router';
 import { createResource, Match, Switch, For } from "solid-js";
 import { useParams } from "@solidjs/router";
-import type { User, IssuedCollectable, UserDuelStats } from "./resources";
-import { timeAgo } from "./Home";
+import type { User, IssuedCollectable, UserDuelStats } from "../resources";
+import { TimeAgo } from "../components/TimeAgo";
 
 import './Event.css';
 
@@ -106,7 +106,7 @@ export const EventDash: Component<{ event: EventPayload }> = (props) => {
         <For each={props.event.last_fights}>
           {(fight) => (
             <div>
-              <div> {timeAgo(fight.time)} </div>
+              <div> <TimeAgo timestamp={fight.time} /> </div>
               <div class="fight-entry">
                 <div class={`participant left ${outcomeclass(fight.outcomes[0])}`}>
                   <div class="name">{userMap().get(fight.user_ids[0])?.name || "Unknown"}</div>

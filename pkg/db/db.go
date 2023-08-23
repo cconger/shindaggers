@@ -93,6 +93,7 @@ type CombatStats = map[string]int
 
 type KnifeDB interface {
 	GetLatestPulls(ctx context.Context) ([]*Knife, error)
+	GetLatestPullsSince(ctx context.Context, since time.Time) ([]*Knife, error)
 	GetKnife(ctx context.Context, knifeID int64) (*Knife, error)
 	GetKnives(ctx context.Context, knifeID ...int64) ([]*Knife, error)
 	GetKnivesForUser(ctx context.Context, userID int64) ([]*Knife, error)

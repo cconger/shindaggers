@@ -1,8 +1,8 @@
 import type { Component } from 'solid-js';
 import { createResource, Switch, Match } from 'solid-js';
 import { useParams } from '@solidjs/router';
-import type { Collectable } from './resources';
-import { Card } from './Card';
+import type { Collectable } from '../resources';
+import { Card } from '../components/Card';
 
 const fetchCollectable = async (id: string): Promise<Collectable> => {
   let response = await fetch("/api/collectable/" + id)
@@ -15,7 +15,7 @@ const fetchCollectable = async (id: string): Promise<Collectable> => {
   })
 }
 
-export const CatalogCard: Component = (props) => {
+export const CatalogCard: Component = () => {
   const params = useParams();
 
   const [collectable] = createResource(() => params.id, fetchCollectable);

@@ -1,10 +1,10 @@
 import type { Component } from 'solid-js';
 import { Show, For, createResource, Switch, Match } from 'solid-js';
 import { A, useParams } from '@solidjs/router';
-import { MiniCard } from './MiniCard';
+import { MiniCard } from '../components/MiniCard';
 import './Catalog.css';
-import type { IssuedCollectable, User, UserDuelStats } from './resources';
-import { DistributionChart } from './Chart';
+import type { IssuedCollectable, User, UserDuelStats } from '../resources';
+import { DistributionChart } from '../components/Chart';
 
 import './User.css';
 
@@ -50,7 +50,9 @@ export const UserCollection: Component = (props) => {
           <Show when={usercollection()!.Equipped}>
             <div class="catalog-equipped">
               <h2>Equipped</h2>
-              <MiniCard collectable={usercollection()!.Equipped!} />
+              <A href={`/knife/${usercollection()!.Equipped!.instance_id}`}>
+                <MiniCard collectable={usercollection()!.Equipped!} />
+              </A>
             </div>
           </Show>
           <div class="catalog-stats">

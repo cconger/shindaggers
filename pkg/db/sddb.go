@@ -68,17 +68,66 @@ JOIN editions ON knife_ownership.edition_id = editions.id
 WHERE owner.id != 166
 AND knives.deleted = false
 AND knives.approved_by is not null
+%s
 ORDER BY knife_ownership.transacted_at DESC
 LIMIT 15;
 `
 
 func (sd *SDDB) GetLatestPulls(ctx context.Context) ([]*Knife, error) {
-	query, err := sd.db.Prepare(getLatestPullsQuery)
+	query, err := sd.db.Prepare(fmt.Sprintf(getLatestPullsQuery, ""))
 	if err != nil {
 		return nil, err
 	}
 
 	rows, err := query.QueryContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	knives := []*Knife{}
+	for rows.Next() {
+		var obtainedAt string
+
+		var knife Knife
+		err = rows.Scan(
+			&knife.ID,
+			&knife.InstanceID,
+			&knife.Name,
+			&knife.Author,
+			&knife.AuthorID,
+			&knife.Owner,
+			&knife.OwnerID,
+			&knife.Rarity,
+			&knife.ImageName,
+			&knife.Subscriber,
+			&knife.Verified,
+			&knife.Edition,
+			&obtainedAt,
+			&knife.Deleted,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		knife.ObtainedAt, err = parseTimestamp(obtainedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		knives = append(knives, &knife)
+	}
+
+	return knives, nil
+}
+
+func (sd *SDDB) GetLatestPullsSince(ctx context.Context, since time.Time) ([]*Knife, error) {
+	query, err := sd.db.Prepare(fmt.Sprintf(getLatestPullsQuery, "AND knife_ownership.transacted_at > ?"))
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := query.QueryContext(ctx, since)
 	if err != nil {
 		return nil, err
 	}

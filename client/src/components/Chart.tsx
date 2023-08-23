@@ -1,8 +1,8 @@
 import type { Component } from 'solid-js';
 import { onMount } from 'solid-js';
 import { Chart, PolarAreaController, ArcElement, Tooltip, Legend, RadialLinearScale } from 'chart.js';
-import type { IssuedCollectable } from './resources';
-import { Rarity, rarityColor } from './resources';
+import type { IssuedCollectable } from '../resources';
+import { Rarity, rarityColor } from '../resources';
 
 export type DistributionChartProps = {
   collection: IssuedCollectable[];

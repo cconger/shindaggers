@@ -23,6 +23,11 @@ h1, h2, h3 {
   margin: 0 1em;
 }
 
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
 nav.masternav {
   height: 2em;
   border-bottom: solid thin black;
@@ -56,4 +61,29 @@ nav.masternav nav {
 
 nav.pages a:first-child {
   margin-left: 0;
+}
+
+.input-button {
+  display: flex;
+}
+
+.input-button input {
+  height: 43px;
+  font-size: 16px;
+  line-height: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.input-button.valid input {
+  border-color: #00FF00;
+}
+
+.input-button .button {
+  margin: 0;
+  background: #F39643;
+  width: 100px;
+  height: 49px;
+  line-height: 49px;
 }
