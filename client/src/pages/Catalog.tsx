@@ -33,10 +33,10 @@ export const Catalog: Component = (props) => {
           </Match>
           <Match when={collectables()}>
             <For each={collectables()} >
-              {(item) => (
-                <A href={`/catalog/${item.id}`}>
+              {(item) => ( 
+                <A draggable="false" href={`/catalog/${item.id}`} >
                   <MiniCard collectable={item} />
-                </A>
+                  </A>
               )}
             </For>
           </Match>
