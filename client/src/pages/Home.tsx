@@ -91,7 +91,7 @@ export const Home: Component = () => {
                     transition={{ duration: 1, easing: 'ease-in-out' }}
                   >
                     <div class="image">
-                      <img src={`https://images.shindaggers.io/images/${item.image_path}`} />
+                      <img src={`https://images.shindaggers.io/images/${item.image_path}`} draggable="false"/>
                     </div>
                     <div class="name">{item.name}</div>
                     <div class="info">
