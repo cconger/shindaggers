@@ -83,7 +83,7 @@ export const Home: Component = () => {
           <Match when={latestPulls()}>
             <For each={latestPulls()}>
               {(item) => (
-                <A href={`/knife/${item.instance_id}`}>
+                <A draggable="false" href={`/knife/${item.instance_id}`}>
                   <Motion.div
                     class={`pull ${rarityclass(item.rarity)}`}
                     initial={{ opacity: 0 }}

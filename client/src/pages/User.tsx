@@ -50,7 +50,7 @@ export const UserCollection: Component = (props) => {
           <Show when={usercollection()!.Equipped}>
             <div class="catalog-equipped">
               <h2>Equipped</h2>
-              <A href={`/knife/${usercollection()!.Equipped!.instance_id}`}>
+              <A draggable = "false" href={`/knife/${usercollection()!.Equipped!.instance_id}`}>
                 <MiniCard collectable={usercollection()!.Equipped!} />
               </A>
             </div>
@@ -62,7 +62,7 @@ export const UserCollection: Component = (props) => {
         <div class="catalog">
           <For each={usercollection()!.Collectables} >
             {(item) => (
-              <A href={`/knife/${item.instance_id}`}>
+              <A draggable = "false" href={`/knife/${item.instance_id}`}>
                 <MiniCard collectable={item} />
               </A>
             )}
