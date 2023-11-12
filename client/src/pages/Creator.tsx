@@ -60,12 +60,18 @@ const CreatorForm: Component<CreatorFormProps> = (props) => {
 
   let submit = async (c: AdminCollectable) => {
     try {
-      let res = await createCollectable(c)
-      setMsg(`Your knife "${res.name}" is pending approval!`)
+      if (c==c) {
+        setMsg(`You have to change something before submitting a knife!`);
+      }
+      else {
+        let res = await createCollectable(c);
+        setMsg(`Your knife "${res.name}" is pending approval!`);
+      }
     } catch (e) {
-      setMsg(`${e}`)
+      setMsg(`${e}`);
     }
   }
+
 
   return (
     <>

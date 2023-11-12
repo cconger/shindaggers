@@ -33,7 +33,7 @@ export const MiniCard: Component<MiniCardProps> = (props) => {
       </div>
 
       <div class="card-image">
-        <img src={imageURL} />
+        <img src={imageURL} draggable="false"/>
       </div>
 
       <svg class="border border-bottom" width="130" height="80" viewBox="0 0 263 156" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -83,7 +83,7 @@ export const Home: Component = () => {
           <Match when={latestPulls()}>
             <For each={latestPulls()}>
               {(item) => (
-                <A href={`/knife/${item.instance_id}`}>
+                <A draggable="false" href={`/knife/${item.instance_id}`}>
                   <Motion.div
                     class={`pull ${rarityclass(item.rarity)}`}
                     initial={{ opacity: 0 }}
@@ -91,7 +91,7 @@ export const Home: Component = () => {
                     transition={{ duration: 1, easing: 'ease-in-out' }}
                   >
                     <div class="image">
-                      <img src={`https://images.shindaggers.io/images/${item.image_path}`} />
+                      <img src={`https://images.shindaggers.io/images/${item.image_path}`} draggable="false"/>
                     </div>
                     <div class="name">{item.name}</div>
                     <div class="info">

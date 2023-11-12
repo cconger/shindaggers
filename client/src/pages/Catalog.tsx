@@ -34,7 +34,7 @@ export const Catalog: Component = (props) => {
           <Match when={collectables()}>
             <For each={collectables()} >
               {(item) => (
-                <A href={`/catalog/${item.id}`}>
+                <A draggable="false" href={`/catalog/${item.id}`}>
                   <MiniCard collectable={item} />
                 </A>
               )}

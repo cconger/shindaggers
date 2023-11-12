@@ -49,7 +49,7 @@ export const Card: Component<CardProps> = (props) => {
       </div>
 
       <div class="card-image">
-        <img src={props.collectable.image_url} />
+        <img src={props.collectable.image_url}  draggable="false"/>
       </div>
 
       <div class="badges">
