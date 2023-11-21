@@ -1095,7 +1095,7 @@ func (s *Server) RandomPullHandler(w http.ResponseWriter, r *http.Request) {
 
 			twusers, nerr := s.twitchClient.GetUsersByID(ctx, reqBody.TwitchID)
 			if nerr != nil {
-				serveAPIErr(w, err, http.StatusInternalServerError, "unable to get user from twitch")
+				serveAPIErr(w, nerr, http.StatusInternalServerError, "unable to get user from twitch")
 				return
 			}
 
