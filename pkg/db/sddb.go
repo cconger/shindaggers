@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	model "github.com/cconger/shindaggers/pkg/db/.gen/sd/model"
+	table "github.com/cconger/shindaggers/pkg/db/.gen/sd/table"
+	mysql "github.com/go-jet/jet/v2/mysql"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -42,6 +45,58 @@ func NewSDDB(connectionString string) (KnifeDB, error) {
 
 func (sd *SDDB) Close(ctx context.Context) error {
 	return sd.db.Close()
+}
+
+type JKnifeInstance struct {
+	model.KnifeOwnership
+
+	Type    *model.Knives `alias:"knives.*"`
+	ID      int64
+	Owner   *model.Users `alias:"owner"`
+	Author  *model.Users `alias:"author"`
+	Edition string       `alias:"editions.name"`
+}
+
+func (sd *SDDB) GetLP(ctx context.Context) ([]JKnifeInstance, error) {
+	owner := table.Users.AS("owner")
+	author := table.Users.AS("author")
+
+	stmt := mysql.SELECT(
+		table.Knives.ID,
+		table.KnifeOwnership.InstanceID,
+		table.Knives.Name,
+		owner.TwitchName,
+		owner.ID,
+		author.TwitchName,
+		author.ID,
+		table.Knives.Rarity,
+		table.Knives.ImageName,
+		table.KnifeOwnership.WasSubscriber,
+		table.KnifeOwnership.IsVerified,
+		table.Editions.Name,
+		table.KnifeOwnership.TransactedAt,
+		table.Knives.Deleted,
+	).FROM(
+		table.KnifeOwnership.
+			INNER_JOIN(table.Knives, table.KnifeOwnership.KnifeID.EQ(table.Knives.ID)).
+			LEFT_JOIN(owner, table.KnifeOwnership.UserID.EQ(owner.ID)).
+			LEFT_JOIN(author, table.Knives.AuthorID.EQ(author.ID)).
+			INNER_JOIN(table.Editions, table.KnifeOwnership.EditionID.EQ(table.Editions.ID)),
+	).WHERE(
+		table.KnifeOwnership.UserID.NOT_EQ(mysql.Int(166)).
+			AND(table.Knives.Deleted.EQ(mysql.Bool(false))).
+			AND(table.Knives.ApprovedBy.IS_NOT_NULL()),
+	).ORDER_BY(
+		table.KnifeOwnership.TransactedAt.DESC(),
+	).LIMIT(15)
+
+	var dest []JKnifeInstance
+	err := stmt.QueryContext(ctx, sd.db, &dest)
+	if err != nil {
+		return nil, err
+	}
+
+	return dest, nil
 }
 
 var getLatestPullsQuery = `

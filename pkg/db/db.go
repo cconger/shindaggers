@@ -92,6 +92,7 @@ type Event struct {
 type CombatStats = map[string]int
 
 type KnifeDB interface {
+	GetLP(ctx context.Context) ([]JKnifeInstance, error)
 	GetLatestPulls(ctx context.Context) ([]*Knife, error)
 	GetLatestPullsSince(ctx context.Context, since time.Time) ([]*Knife, error)
 	GetKnife(ctx context.Context, knifeID int64) (*Knife, error)

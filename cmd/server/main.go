@@ -22,8 +22,12 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/gorilla/mux"
+	honeycomb "github.com/honeycombio/honeycomb-opentelemetry-go"
+	"github.com/honeycombio/otel-config-go/otelconfig"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type blobClient interface {
@@ -112,6 +116,16 @@ func main() {
 	isolated := flag.Bool("nodb", false, "enable the application to use mock intefaces to dependencies, allows you to develop without having access to other services")
 	flag.Parse()
 
+	var err error
+	bsp := honeycomb.NewBaggageSpanProcessor()
+	otelShutdown, err := otelconfig.ConfigureOpenTelemetry(
+		otelconfig.WithSpanProcessor(bsp),
+	)
+	if err != nil {
+		log.Fatalf("error setting up OTel DSK - %e", err)
+	}
+	defer otelShutdown()
+
 	discordWebhook := os.Getenv("DISCORD_WEBHOOK")
 	clientID := os.Getenv("TWITCH_CLIENT_ID")
 	clientSecret := os.Getenv("TWITCH_SECRET")
@@ -124,7 +138,6 @@ func main() {
 	var blobClient blobClient
 	var twitchClient twitch.TwitchClient
 	var dbClient db.KnifeDB
-	var err error
 
 	if *isolated {
 		blobClient = &mockBlobClient{}
@@ -145,7 +158,13 @@ func main() {
 			blobClient = nil
 		}
 
-		twitchClient, err = twitch.NewClient(clientID, clientSecret)
+		twitchClient, err = twitch.NewClient(
+			clientID,
+			clientSecret,
+			&http.Client{
+				Transport: otelhttp.NewTransport(http.DefaultTransport),
+			},
+		)
 		if err != nil {
 			log.Fatalf("failed to create twitchclient: %s", err)
 		}
@@ -186,6 +205,7 @@ func main() {
 	}
 
 	r := mux.NewRouter()
+	r.Use(otelmux.Middleware("shindaggers"))
 
 	r.HandleFunc("/oauth/login", s.LoginHandler).Methods(http.MethodGet)
 	r.HandleFunc("/oauth/handler", s.LoginResponseHandler).Methods(http.MethodGet)
@@ -195,6 +215,7 @@ func main() {
 	r.HandleFunc("/api/collectable", s.createCollectable).Methods(http.MethodPost)
 	r.HandleFunc("/api/issued/{id:[0-9]+}", s.getIssuedCollectable).Methods(http.MethodGet)
 
+	r.HandleFunc("/api/latest/v2", s.getLatestv2).Methods(http.MethodGet)
 	r.HandleFunc("/api/latest", s.getLatest).Methods(http.MethodGet)
 	r.HandleFunc("/api/user/me", s.getLoggedInUser).Methods(http.MethodGet)
 

@@ -269,6 +269,20 @@ func (s *Server) getCollectable(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
+func (s *Server) getLatestv2(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	lp, err := s.db.GetLP(ctx)
+	if err != nil {
+		serveAPIErr(w, err, http.StatusInternalServerError, "Internal Error")
+		return
+	}
+
+	serveAPIPayload(
+		w,
+		lp,
+	)
+}
+
 func (s *Server) getLatest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

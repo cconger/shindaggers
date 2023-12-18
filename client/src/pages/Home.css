@@ -9,7 +9,7 @@
 .split {
   display: grid;
   grid-template-rows: 100%;
-  grid-template-columns: minmax(auto, 1000px) minmax(400px, auto);
+  grid-template-columns: auto minmax(400px, 600px);
   margin: 0;
 }
 
@@ -59,17 +59,23 @@ section.pulls {
 
 .pull {
   display: grid;
-  grid-template-columns: 60px 1fr 3fr;
-  grid-gap: 10px;
+  grid-template-columns: 80px 1fr;
+  grid-template-rows: 2fr 3fr;
+  grid-template-areas: 
+    "image name"
+    "image info";
   font-size: 20px;
   font-weight: 700;
   margin: 12px 0;
   align-items: center;
-  min-height: 60px;
+  min-height: 80px;
+  border: solid 2px #f3e600;
+  transition: box-shadow 0.2s;
 }
 
 .pull .image {
   position: relative;
+  grid-area: image;
 }
 
 .pull .image img {
@@ -80,53 +86,65 @@ section.pulls {
 }
 
 .pull .name {
+  grid-area: name;
   text-transform: uppercase;
 }
 
 .pull .info {
-  font-size: 18px;
+  grid-area: info;
+  font-size: 16px;
 }
 
 .pull .time {
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .pull.common {
-  background: linear-gradient(90deg, #26B800 64.5%, rgba(0, 94, 102, 0) 95.51%);
+  border-color: #26BB00;
+  box-shadow: 0 0 10px 5px #26BB00;
+  background: rgba(38,187,0,0.2)
 }
 
 .pull.common:hover {
-  background: linear-gradient(90deg, #26B800 64.5%, rgba(0, 94, 102, 0) 95.51%);
+  box-shadow: 0 0 20px 10px #26BB00;
 }
 
 .pull.uncommon {
-  background: linear-gradient(90deg, #005E66 64.5%, rgba(0, 94, 102, 0) 95.51%);
+  border-color: #005E66;
+  box-shadow: 0 0 10px 5px #005E66;
+  background: rgba(0,94,102,0.2)
 }
 
 .pull.uncommon:hover {
-  background: linear-gradient(90deg, #005E66 64.5%, rgba(0, 94, 102, 0) 95.51%);
+  box-shadow: 0 0 10px 10px #005E66;
 }
 
 .pull.rare {
-  background: linear-gradient(90deg, #510165 64.5%, rgba(0, 94, 102, 0) 95.51%);
+  border-color: #510165;
+  box-shadow: 0 0 10px 5px #510165;
+  background: rgba(81,1,101,0.2)
 }
 
 .pull.rare:hover {
-  background: linear-gradient(90deg, #510165 64.5%, rgba(0, 94, 102, 0) 95.51%);
+  box-shadow: 0 0 10px 10px #510165;
 }
 
 .pull.super-rare {
-  background: linear-gradient(90deg, #CCCB00 64.5%, rgba(0, 94, 102, 0) 95.51%);
+  border-color: #CCCB00;
+  box-shadow: 0 0 10px 5px #CCCB00;
+  background: rgba(204,203,0,0.2)
 }
 
 .pull.super-rare:hover {
-  background: linear-gradient(90deg, #CCCB00 64.5%, rgba(0, 94, 102, 0) 95.51%);
+  box-shadow: 0 0 10px 10px #CCCB00;
 }
 
 .pull.ultra-rare {
-  background: linear-gradient(90deg, #A60000 64.5%, rgba(0, 94, 102, 0) 95.51%);
+  border-color: #A60000;
+  box-shadow: 0 0 10px 5px #A60000;
+  background: rgba(166,0,0,0.2)
 }
 
 .pull.ultra-rare:hover {
-  background: linear-gradient(90deg, #A60000 64.5%, rgba(0, 94, 102, 0) 95.51%);
+  box-shadow: 0 0 10px 10px #A60000;
 }

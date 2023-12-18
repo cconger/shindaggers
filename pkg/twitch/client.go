@@ -104,7 +104,7 @@ func (ua *UserAuth) Refresh() {
 	slog.Warn("refreshing user token not implemented")
 }
 
-func NewClient(clientID string, clientSecret string) (*Client, error) {
+func NewClient(clientID string, clientSecret string, httpClient *http.Client) (*Client, error) {
 	if clientID == "" {
 		return nil, fmt.Errorf("client id cannot be empty")
 	}
@@ -114,7 +114,7 @@ func NewClient(clientID string, clientSecret string) (*Client, error) {
 	}
 
 	return &Client{
-		Client:       &http.Client{},
+		Client:       httpClient,
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		auth: &AppAuth{
