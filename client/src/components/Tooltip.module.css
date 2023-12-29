@@ -1,0 +1,25 @@
+
+.tooltip {
+  font-family: 'Orbitron', sans-serif;
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+}
+
+.tooltip .tip {
+  display: none;
+  font-size: 14px;
+  position: absolute;
+  right: 110%;
+  top: -6px;
+  width: 200px;
+}
+
+.tooltip .tip p {
+  text-align: right;
+}
+
+.tooltip:hover .tip {
+  display: inline-block;
+}

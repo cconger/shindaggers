@@ -1,0 +1,28 @@
+.user-complete {
+  position: relative;
+  margin: 10px 0;
+}
+
+.user-complete .results {
+  position: absolute;
+  top: 50px;
+  left: 10px;
+  background: rgb(240, 240, 255);
+  border: solid thin black;
+  z-index: 100;
+}
+
+.user-complete .results {
+  font-size: 20px;
+  padding: 0;
+}
+
+.user-complete .results div {
+  padding: 5px 10px;
+}
+
+.user-complete .results div:hover {
+  padding: 5px 10px;
+  background: rgb(180, 180, 188);
+  cursor: pointer;
+}

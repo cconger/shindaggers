@@ -3,8 +3,13 @@ import { onMount, Show } from 'solid-js';
 import type { IssuedCollectable, Collectable } from '../resources';
 import { rarityclass } from '../resources';
 import TextArtBG from './TextArtBG';
-import './Card.css';
+import { Tooltip } from './Tooltip';
+import Verified from '@suid/icons-material/Verified';
+import Favorite from '@suid/icons-material/Favorite';
+import Dangerous from '@suid/icons-material/Dangerous';
 import VanillaTilt from 'vanilla-tilt';
+
+import './Card.css';
 
 type CardProps = {
   collectable: Collectable;
@@ -12,8 +17,6 @@ type CardProps = {
 }
 
 export const Card: Component<CardProps> = (props) => {
-
-  const imageURL = "https://images.shindaggers.io/images/" + props.collectable.image_path;
   const cls = () => ["card", rarityclass(props.collectable.rarity)].join(" ");
 
   let card: HTMLDivElement | undefined;
@@ -54,13 +57,19 @@ export const Card: Component<CardProps> = (props) => {
 
       <div class="badges">
         <Show when={props.issuedCollectable?.deleted}>
-          <div class="deleted" title="This knife was deleted. 🤫"></div>
+          <Tooltip tip="This card has been deleted">
+            <Dangerous fontSize="large" titleAccess="This card has been deleted" />
+          </Tooltip>
         </Show>
         <Show when={props.issuedCollectable?.verified}>
-          <div class="verified" title="Verified Issue"></div>
+          <Tooltip tip="Verified Issue">
+            <Verified fontSize="large" titleAccess="Verified Issue" />
+          </Tooltip>
         </Show>
         <Show when={props.issuedCollectable?.subscriber}>
-          <div class="subscribed" title="Subscriber Issue"></div>
+          <Tooltip tip="Issued while subscribed">
+            <Favorite fontSize="large" titleAccess="Issued while subscribed" />
+          </Tooltip>
         </Show>
       </div>
 

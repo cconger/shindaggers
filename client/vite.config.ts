@@ -1,6 +1,7 @@
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
 import solidPlugin from 'vite-plugin-solid';
+import suidPlugin from '@suid/vite-plugin';
 // import devtools from 'solid-devtools/vite';
 
 let upstream = 'https://shindaggers.io';
@@ -16,6 +17,7 @@ export default defineConfig({
     */
     // devtools(),
     solidPlugin(),
+    suidPlugin(),
   ],
   server: {
     port: 3000,
@@ -27,20 +29,20 @@ export default defineConfig({
       '/oauth/redirect': {
         target: upstream,
         changeOrigin: true,
-      } ,
-        '/oauth/login': {
-          target: upstream,
-          changeOrigin: true,
-        },
-     },
-  },
-  build: {
-      target: 'esnext',
-      rollupOptions: {
-        input: {
-          main: resolve(__dirname, 'index.html'),
-          overlay: resolve(__dirname, 'overlay/index.html'),
-        },
+      },
+      '/oauth/login': {
+        target: upstream,
+        changeOrigin: true,
       },
     },
+  },
+  build: {
+    target: 'esnext',
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        overlay: resolve(__dirname, 'overlay/index.html'),
+      },
+    },
+  },
 });

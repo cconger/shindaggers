@@ -5,8 +5,9 @@ import { Motion } from '@motionone/solid';
 import { LoginButton } from '../components/LoginButton';
 import type { IssuedCollectable } from '../resources';
 import { rarityclass } from '../resources';
-import { UserSearch } from './Admin';
+import { UserSearch } from '../components/UserSearch';
 import { TimeAgo } from '../components/TimeAgo';
+import { Button } from "@suid/material";
 
 import './Home.css';
 
@@ -37,7 +38,7 @@ const fetchLatest: ResourceFetcher<true, IssuedCollectable[], unknown> = async (
 }
 
 export const Home: Component = () => {
-  const [latestPulls, { refetch, mutate }] = createResource(fetchLatest)
+  const [latestPulls, { refetch }] = createResource(fetchLatest)
   const navigate = useNavigate();
 
   let pollHandle: number | undefined = undefined;
@@ -59,17 +60,13 @@ export const Home: Component = () => {
         <h1>Shindaggers</h1>
         <p>Gaze upon your collection of hard earned <a href="https://twitch.tv/shindigs">Shindigs</a> Brand Knives.</p>
 
-        <A href="/catalog">
-          <div class="button">
-            View the Collection
-          </div>
-        </A>
+        <Button href="/catalog" variant="contained" color="primary" size="large">
+          View The Collection
+        </Button>
 
         <div>
           <h3>Lookup a collection:</h3>
-          <div class="input-button">
-            <UserSearch placeholder="username" onUserSelected={(u) => { u !== null && navigate(`/user/${u.id}`) }} />
-          </div>
+          <UserSearch placeholder="username" onUserSelected={(u) => { u !== null && navigate(`/user/${u.id}`) }} />
         </div>
 
         <div><h3>Or</h3></div>

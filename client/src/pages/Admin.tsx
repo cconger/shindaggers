@@ -7,6 +7,7 @@ import { createStore } from 'solid-js/store';
 import { Card } from '../components/Card';
 import { useAuthManager } from '../auth';
 import { Button } from '../components/Button';
+import { UserSearch } from '../components/UserSearch';
 
 import './Admin.css';
 
@@ -472,72 +473,6 @@ export const CollectableForm: Component<CollectableFormProps> = (props) => {
       </Show>
     </div>
   )
-}
-
-type UserSearchProps = {
-  placeholder?: string,
-  default?: User,
-  onUserSelected(u: User | null): unknown,
-}
-
-const searchUsers = async (search: string): Promise<User[]> => {
-  if (search == "") {
-    return [];
-  }
-
-  let resp = await fetch("/api/users?search=" + search)
-  if (!resp.ok) {
-    throw new Error("unexpected status")
-  }
-
-  let users = await resp.json();
-
-  return users.Users;
-}
-
-export const UserSearch: Component<UserSearchProps> = (props) => {
-  const [search, setSearch] = createSignal("");
-  const [valid, setValid] = createSignal(!!props.default);
-  const [searchResults] = createResource(() => search(), searchUsers)
-
-  let placeholder = props.placeholder || "User"
-
-  let inputEl: HTMLInputElement | undefined = undefined;
-  let selectUser = (user: User) => {
-    props.onUserSelected(user);
-    setValid(true);
-    setSearch("");
-    if (inputEl !== undefined) {
-      inputEl.value = user.name;
-    }
-  };
-
-  let cls = () => ({
-    "input-button": true,
-    "valid": valid(),
-    "invalid": !valid(),
-  });
-
-  return (
-    <>
-      <div classList={cls()}>
-        <input ref={inputEl} value={props.default?.name || ""} placeholder={placeholder} onInput={(e) => { setValid(false); setSearch(e.target.value); }} />
-        <div class="results">
-          <Switch>
-            <Match when={searchResults.loading}><img src="https://images.shindaggers.io/images/spinner.svg" /></Match>
-            <Match when={searchResults.error}><div>{searchResults.error}</div></Match>
-            <Match when={searchResults()}>
-              <For each={searchResults()}>
-                {(user) => (
-                  <div onClick={() => selectUser(user)}>{user.name}</div>
-                )}
-              </For>
-            </Match>
-          </Switch>
-        </div>
-      </div>
-    </>
-  );
 }
 
 const fetchAdminCollectable = async (id: string): Promise<AdminCollectable> => {

@@ -2,6 +2,7 @@ import type { Component, JSX } from 'solid-js';
 import { A, Navigate } from '@solidjs/router';
 import { Show, Switch, Match } from 'solid-js';
 import { useAuthManager } from '../auth';
+import { Button } from "@suid/material";
 
 export const NavLogin: Component = () => {
   let am = useAuthManager();
@@ -45,20 +46,16 @@ export const LoginButton: Component = () => {
         </a>
       </Match>
       <Match when={am.user() === null}>
-        <a href="/oauth/login">
-          <div class="button">
-            Login with Twitch
-          </div>
-        </a>
+        <Button variant="contained" color="primary" size="large" href="/oauth/login">
+          Login with Twitch
+        </Button>
       </Match>
       <Match when={am.user()}>
-        <A href={`/user/${am.user()!.id}`}>
-          <div class="button">
-            {am.user()!.name}'s Collection
-          </div>
-        </A>
+        <Button variant="contained" color="primary" size="large" href={`/user/${am.user()!.id}`}>
+          {am.user()!.name}'s Collection
+        </Button>
       </Match>
-    </Switch>
+    </Switch >
   )
 }
 

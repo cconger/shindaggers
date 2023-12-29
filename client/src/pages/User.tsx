@@ -1,10 +1,11 @@
 import type { Component } from 'solid-js';
-import { Show, For, createResource, Switch, Match } from 'solid-js';
+import { Show, createResource, Switch, Match } from 'solid-js';
 import { A, useParams } from '@solidjs/router';
 import { MiniCard } from '../components/MiniCard';
 import './Catalog.css';
 import type { IssuedCollectable, User, UserDuelStats } from '../resources';
 import { DistributionChart } from '../components/Chart';
+import { ListingFromCollectables, UserCollectionList } from '../components/UserCollectionList';
 
 import './User.css';
 
@@ -32,6 +33,13 @@ export const UserCollection: Component = (props) => {
     return collection.Collectables.length;
   }
 
+  const listings = () => {
+    if (usercollection() === undefined) {
+      return [];
+    }
+    return ListingFromCollectables(usercollection()!.Collectables);
+  }
+
   return (
     <Switch>
       <Match when={usercollection.loading}>
@@ -43,8 +51,7 @@ export const UserCollection: Component = (props) => {
       <Match when={usercollection()}>
         <div class="catalog-header">
           <div class="catalog-title">
-            <h1>{usercollection()!.User.name}'s Collection</h1>
-            <h3>{total()} Knives</h3>
+            <h1>{usercollection()!.User.name}</h1>
             <DuelStats user={usercollection()!.User} />
           </div>
           <Show when={usercollection()!.Equipped}>
@@ -55,18 +62,9 @@ export const UserCollection: Component = (props) => {
               </A>
             </div>
           </Show>
-          <div class="catalog-stats">
-            <DistributionChart collection={usercollection()!.Collectables} />
-          </div>
         </div>
         <div class="catalog">
-          <For each={usercollection()!.Collectables} >
-            {(item) => (
-              <A href={`/knife/${item.instance_id}`}>
-                <MiniCard collectable={item} />
-              </A>
-            )}
-          </For>
+          <UserCollectionList collection={usercollection()?.Collectables || []} />
         </div>
       </Match>
     </Switch>
@@ -109,7 +107,7 @@ export const DuelStats: Component<DuelStatsProps> = (props) => {
       </Match>
       <Match when={userstats()}>
         <>
-          <h2>Duel Stats </h2>
+          <h2>Duels </h2>
           <div class="stat-block">
             <div class="stat">
               <div class="header" title="Wins">W</div>

@@ -1,0 +1,176 @@
+.UserListing {
+  margin: 0 2em;
+}
+
+.Listing {
+  display: flex;
+  flex-direction: row;
+  align-items: top;
+  box-sizing: content-box;
+  margin: 2em 0;
+  position: relative;
+}
+
+.Listing:before {
+  content: '';
+  border-top: 3px solid;
+  margin: 0 50px;
+  width: calc(100% - 100px);
+  position: absolute;
+  top: -2px;
+}
+
+.Listing:hover .ListingName {
+  text-shadow: rgba(0,0,0,0.3) 3px 3px 3px;
+}
+
+.ListingBody {
+  flex: auto;
+}
+
+.ListingHeader {
+  justify-content: space-between;
+  display: flex;
+}
+
+.ListingName {
+  text-transform: uppercase;
+  font-size: 24px;
+  font-weight: 800;
+  transition: text-shadow 0.2s;
+}
+
+.ListingIssued {
+  font-family: "Orbitron", sans-serif;
+}
+
+.ListingInstance {
+  display: flex;
+  width: 250px;
+  margin-left: 2em;
+  font-family: "Orbitron", sans-serif;
+  font-size: 14px;
+}
+
+.InstanceDate {
+  flex: auto;
+}
+
+.Stats {
+  margin: 2em 0;
+}
+
+.Stat {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  font-size: 40px;
+}
+
+.StatLabel{
+  flex-grow: auto;
+  margin-right: 1em;
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.Count {
+  width: 25px;
+  text-align: right;
+}
+
+.CountNum {
+  font-size: 36px;
+  font-weight: 800;
+}
+
+.CountX {
+  font-weight: 700;
+  font-size: 20px;
+  margin: 0 10px 0 5px;
+}
+
+.Filters {
+  font-family: "Orbitron", sans-serif;
+  margin: 2em 0;
+}
+
+.InlineImage {
+  position: relative;
+}
+
+.InlineImage svg {
+  width: 102px;
+  height: 102px;
+}
+
+.InlineImage img {
+  position: absolute;
+  width: 100px;
+  top: 1px;
+  left: 1px;
+  clip-path: polygon(50px 0, 75px 25px, 75px 75px, 50px 100px, 25px 75px, 25px 25px);
+}
+
+.InlineImage svg {
+  stroke-width: 2px;
+}
+
+.Listing:hover .InlineImage svg {
+  stroke-width: 4px;
+}
+
+.Heading {
+  text-align: right;
+  font-size: 14px;
+}
+
+.Val {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.Listing.Common:before {
+  border-color: #26B800;
+}
+
+.Listing.Uncommon:before {
+  border-color: #005E66;
+}
+
+.Listing.Rare:before {
+  border-color: #510165;
+}
+
+.Listing.SuperRare:before {
+  border-color: #CCCB00;
+}
+
+.Listing.UltraRare:before {
+  border-color: #A60000;
+}
+
+.Common .SVG {
+  stroke: #26B800;
+  filter: drop-shadow(0 0 10px #26B800);
+}
+
+.Uncommon .SVG {
+  stroke: #005E66;
+  filter: drop-shadow(0 0 10px #005E66);
+}
+
+.Rare .SVG {
+  stroke: #510165;
+  filter: drop-shadow(0 0 10px #510165);
+}
+
+.SuperRare .SVG {
+  stroke: #CCCB00;
+  filter: drop-shadow(0 0 10px #CCCB00);
+}
+
+.UltraRare .SVG {
+  stroke: #A60000;
+  filter: drop-shadow(0 0 10px #A60000);
+}

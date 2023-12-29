@@ -19,6 +19,9 @@
   "dependencies": {
     "@motionone/solid": "^10.16.2",
     "@solidjs/router": "^0.8.2",
+    "@suid/icons-material": "^0.6.11",
+    "@suid/material": "^0.15.1",
+    "@suid/vite-plugin": "^0.1.5",
     "chart.js": "^4.3.3",
     "solid-js": "^1.7.6",
     "vanilla-tilt": "^1.8.0"
