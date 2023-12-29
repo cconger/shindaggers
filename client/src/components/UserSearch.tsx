@@ -50,7 +50,7 @@ export const UserSearch: Component<UserSearchProps> = (props) => {
   return (
     <>
       <div classList={cls()}>
-        <TextField ref={inputEl} label="Search" variant="outlined" fullWidth onChange={(e) => { setValid(false); setSearch(e.target.value); }} />
+        <TextField ref={inputEl} label="Search" autoComplete="off" variant="outlined" fullWidth onChange={(e) => { setValid(false); setSearch(e.target.value); }} />
         <div class="results">
           <Switch>
             <Match when={searchResults.loading}><img src="https://images.shindaggers.io/images/spinner.svg" /></Match>

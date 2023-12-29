@@ -31,10 +31,10 @@
 .stat-block .stat .header {
   font-size: 2em;
   font-weight: 700;
-  color: black;
+  color: #EFEFEF;
 }
 
 .stat-block .stat .count {
   font-size: 1.2em;
-  color: black;
+  color: #EFEFEF;
 }

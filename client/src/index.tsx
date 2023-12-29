@@ -2,6 +2,7 @@
 import { render } from 'solid-js/web';
 import { Router, Routes, Route, A } from '@solidjs/router';
 import { lazy } from 'solid-js';
+import { ThemeProvider, createTheme } from '@suid/material';
 
 import './index.css';
 import { Catalog } from './pages/Catalog';
@@ -38,36 +39,44 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   );
 }
 
-render(() => (
-  <Router>
-    <nav class="masternav">
-      <nav class="pages">
-        <A href="/">Shindaggers</A>
-        <A href="/catalog">Catalog</A>
-        <IfLoggedIn>
-          <A href="/creator">Create</A>
-        </IfLoggedIn>
-      </nav>
-      <nav class="panel">
-        <NavLogin />
-      </nav>
-    </nav>
-    <Routes>
-      <Route path="/" component={Home} />
-      <Route path="/login" component={LoginLander} />
+const theme = createTheme({
+  palette: {
+    mode: 'dark',
+  },
+})
 
-      <Route path="/knife/:id" component={Pull} />
-      <Route path="/user/:id" component={UserCollection} />
-      <Route path="/catalog" component={Catalog} />
-      <Route path="/catalog/:id" component={CatalogCard} />
-      <Route path="/creator" component={Creator} />
-      <Route path="/event/:slug" component={Event} />
-      <Route path="/uitest" component={UITest} />
-      <Route path="/admin" component={AdminWrapper}>
-        <Route path="/" component={AdminPage} />
-        <Route path="/knife/:id" component={AdminKnife} />
-      </Route>
-      <Route path="*" component={FourOhFour} />
-    </Routes>
-  </Router>
+render(() => (
+  <ThemeProvider theme={theme}>
+    <Router>
+      <nav class="masternav">
+        <nav class="pages">
+          <A href="/">Shindaggers</A>
+          <A href="/catalog">Catalog</A>
+          <IfLoggedIn>
+            <A href="/creator">Create</A>
+          </IfLoggedIn>
+        </nav>
+        <nav class="panel">
+          <NavLogin />
+        </nav>
+      </nav>
+      <Routes>
+        <Route path="/" component={Home} />
+        <Route path="/login" component={LoginLander} />
+
+        <Route path="/knife/:id" component={Pull} />
+        <Route path="/user/:id" component={UserCollection} />
+        <Route path="/catalog" component={Catalog} />
+        <Route path="/catalog/:id" component={CatalogCard} />
+        <Route path="/creator" component={Creator} />
+        <Route path="/event/:slug" component={Event} />
+        <Route path="/uitest" component={UITest} />
+        <Route path="/admin" component={AdminWrapper}>
+          <Route path="/" component={AdminPage} />
+          <Route path="/knife/:id" component={AdminKnife} />
+        </Route>
+        <Route path="*" component={FourOhFour} />
+      </Routes>
+    </Router>
+  </ThemeProvider>
 ), root!);

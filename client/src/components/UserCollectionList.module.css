@@ -9,15 +9,8 @@
   box-sizing: content-box;
   margin: 2em 0;
   position: relative;
-}
-
-.Listing:before {
-  content: '';
-  border-top: 3px solid;
-  margin: 0 50px;
-  width: calc(100% - 100px);
-  position: absolute;
-  top: -2px;
+  gap: 2em;
+  border-top: solid 4px;
 }
 
 .Listing:hover .ListingName {
@@ -29,8 +22,9 @@
 }
 
 .ListingHeader {
-  justify-content: space-between;
-  display: flex;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 30px;
 }
 
 .ListingName {
@@ -44,9 +38,13 @@
   font-family: "Orbitron", sans-serif;
 }
 
+.ListingInstances {
+  flex: auto;
+}
+
 .ListingInstance {
-  display: flex;
   width: 250px;
+  display: flex;
   margin-left: 2em;
   font-family: "Orbitron", sans-serif;
   font-size: 14px;
@@ -130,23 +128,23 @@
   font-weight: 700;
 }
 
-.Listing.Common:before {
+.Listing.Common {
   border-color: #26B800;
 }
 
-.Listing.Uncommon:before {
+.Listing.Uncommon {
   border-color: #005E66;
 }
 
-.Listing.Rare:before {
+.Listing.Rare {
   border-color: #510165;
 }
 
-.Listing.SuperRare:before {
+.Listing.SuperRare {
   border-color: #CCCB00;
 }
 
-.Listing.UltraRare:before {
+.Listing.UltraRare {
   border-color: #A60000;
 }
 

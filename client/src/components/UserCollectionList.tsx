@@ -3,6 +3,7 @@ import { Show, For, createSignal } from 'solid-js';
 import type { IssuedCollectable, Collectable } from '../resources';
 import { Rarity, rarities } from '../resources';
 import { A } from '@solidjs/router';
+import { MiniCard } from './MiniCard';
 
 import { TextField, Stack, Chip } from '@suid/material';
 import Verified from '@suid/icons-material/Verified';
@@ -31,7 +32,9 @@ export const ListingFromCollectables = (issuedCollectables: IssuedCollectable[])
     }
   });
 
-  return Array.from(byID.values())
+  return Array.from(byID.values()).sort((a, b) => {
+    return a.first_acquired < b.first_acquired ? 1 : -1;
+  })
 }
 
 type UserCollectionListProps = {
@@ -198,21 +201,22 @@ const UserCollectionListing: Component<UserCollectionListingProps> = (props) => 
     [styles[props.listing.rarity.replace(/\s/g, "")]]: true,
   };
 
+  let copies = () => {
+    if (props.listing.instances.length == 1) {
+      return "1 Copy";
+    }
+
+    return props.listing.instances.length + " Copies";
+  }
+
   return (
     <>
       <div classList={clsList}>
-        <InlineImage image_url={props.listing.image_url} rarity={props.listing.rarity} />
+        <A href={`/knife/${props.listing.instances[0].instance_id}`}>
+          <MiniCard collectable={props.listing} />
+        </A>
         <div class={styles.ListingBody}>
-          <div class={styles.ListingHeader}>
-            <div class={styles.ListingTitle}>
-              <div class={styles.ListingName}> {props.listing.name}</div>
-              <div class={styles.Author}>{props.listing.author.name}</div>
-            </div>
-            <div class={styles.ListingIssued}>
-              <div class={styles.Heading}>First Earned</div>
-              <div class={styles.Val}>{props.listing.first_acquired.toLocaleDateString()}</div>
-            </div>
-          </div>
+          <div class={styles.ListingHeader}>{copies()}</div>
           <For each={props.listing.instances}>
             {(instance) => (
               <A href={`/knife/${instance.instance_id}`}>
@@ -233,6 +237,12 @@ const UserCollectionListing: Component<UserCollectionListingProps> = (props) => 
               </A>
             )}
           </For>
+        </div>
+        <div class={styles.ListingHeader}>
+          <div class={styles.ListingIssued}>
+            <div class={styles.Heading}>First Earned</div>
+            <div class={styles.Val}>{props.listing.first_acquired.toLocaleDateString()}</div>
+          </div>
         </div>
       </div>
     </>

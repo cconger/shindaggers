@@ -6,8 +6,8 @@ import type { AdminCollectable, User } from '../resources';
 import { createStore } from 'solid-js/store';
 import { Card } from '../components/Card';
 import { useAuthManager } from '../auth';
-import { Button } from '../components/Button';
 import { UserSearch } from '../components/UserSearch';
+import { TextField, Select, MenuItem, Button } from '@suid/material';
 
 import './Admin.css';
 
@@ -386,7 +386,7 @@ export const CollectableForm: Component<CollectableFormProps> = (props) => {
     return res;
   }
 
-  let handleExistingImage: JSX.EventHandler<HTMLInputElement, Event> = (e) => {
+  let handleExistingImage = (e: any) => {
     let url = e.currentTarget.value;
 
     if (store.image) {
@@ -420,20 +420,26 @@ export const CollectableForm: Component<CollectableFormProps> = (props) => {
   return (
     <div class="form">
       <div class="input-button">
-        <input
-          placeholder="Name"
+        <TextField
+          label="Name"
+          variant="outlined"
           value={store.name}
-          onInput={(e) => setStore({ name: e.currentTarget.value })}
+          onChange={(e) => setStore({ name: e.currentTarget.value })}
         />
       </div>
       <div>
-        <select class="selector" id="rarity" name="rarity" onChange={(e) => setStore({ rarity: e.currentTarget.value as Rarity })}>
-          <For each={rarities}>
-            {(r) => (
-              <option value={r} selected={store.rarity == r}>{r.toString()}</option>
-            )}
-          </For>
-        </select>
+        <Select
+          label="Rarity"
+          variant="outlined"
+          value={store.rarity}
+          onChange={(e) => setStore({ rarity: e.target.value as Rarity })}
+        >
+          <MenuItem value={Rarity.Common}>Common</MenuItem>
+          <MenuItem value={Rarity.Uncommon}>Uncommon</MenuItem>
+          <MenuItem value={Rarity.Rare}>Rare</MenuItem>
+          <MenuItem value={Rarity.SuperRare}>Super Rare</MenuItem>
+          <MenuItem value={Rarity.UltraRare}>Ultra Rare</MenuItem>
+        </Select>
       </div>
       <Show when={!props.authuser}>
         <UserSearch
@@ -443,8 +449,8 @@ export const CollectableForm: Component<CollectableFormProps> = (props) => {
       </Show>
       <div class="image-selector">
         <div class="input-button">
-          <input
-            placeholder="Existing Image"
+          <TextField
+            label="Image Path"
             value={store.imagePath}
             onChange={handleExistingImage}
           />
@@ -452,17 +458,17 @@ export const CollectableForm: Component<CollectableFormProps> = (props) => {
         <div class="or"><h3>Or</h3></div>
         <div>
           <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={handleImageChange} />
-          <div class="button" onClick={() => fileInputRef?.click()}>Upload Image</div>
+          <Button variant="contained" size="large" onClick={() => fileInputRef?.click()}>Upload Image</Button>
         </div>
       </div>
 
       <Show when={store.preview} keyed>
         <div class="controls">
-          <Button text="Submit" onClick={handleSubmit} />
+          <Button variant="contained" size="large" onClick={handleSubmit}>Submit</Button>
           <Show when={props.allowDelete && props.collectable}>
             <Show when={props.collectable?.deleted}><h3>KNIFE IS DELETED</h3></Show>
             <Show when={!props.collectable?.deleted}>
-              <Button text="Delete" danger onClick={() => deleteKnife(props.collectable!.id)} />
+              <Button variant="contained" color="error" onClick={() => deleteKnife(props.collectable!.id)}>Delete</Button>
             </Show>
           </Show>
         </div>
@@ -471,7 +477,7 @@ export const CollectableForm: Component<CollectableFormProps> = (props) => {
           <Card collectable={collectable()} />
         </Show>
       </Show>
-    </div>
+    </div >
   )
 }
 
