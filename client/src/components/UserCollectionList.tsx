@@ -4,13 +4,12 @@ import type { IssuedCollectable, Collectable } from '../resources';
 import { Rarity, rarities } from '../resources';
 import { A } from '@solidjs/router';
 
-import { TextField, Stack, Chip, Divider } from '@suid/material';
+import { TextField, Stack, Chip } from '@suid/material';
 import Verified from '@suid/icons-material/Verified';
 import Favorite from '@suid/icons-material/Favorite';
 import Check from '@suid/icons-material/Check'
 
 import styles from './UserCollectionList.module.css';
-//import './Colors.css';
 
 export const ListingFromCollectables = (issuedCollectables: IssuedCollectable[]) => {
   const byID = new Map<string, CollectableListing>();

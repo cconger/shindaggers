@@ -27,19 +27,6 @@ export const UserCollection: Component = (props) => {
   const params = useParams();
   const [usercollection] = createResource(() => params.id, fetchUserCollection)
 
-  let total = () => {
-    let collection = usercollection();
-    if (collection === undefined) { return 0; }
-    return collection.Collectables.length;
-  }
-
-  const listings = () => {
-    if (usercollection() === undefined) {
-      return [];
-    }
-    return ListingFromCollectables(usercollection()!.Collectables);
-  }
-
   return (
     <Switch>
       <Match when={usercollection.loading}>

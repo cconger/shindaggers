@@ -36,6 +36,10 @@ export const MiniCard: Component<MiniCardProps> = (props) => {
         <img src={imageURL} />
       </div>
 
+      <div class="author">
+        {collectable.author.name}
+      </div>
+
       <svg class="border border-bottom" width="130" height="80" viewBox="0 0 263 156" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M127 147L254 147L254 1.50204e-05" stroke-width="17" />
         <path d="M110 147H49" stroke-width="17" />
