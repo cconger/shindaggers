@@ -577,8 +577,8 @@ export const AdminKnife: Component = () => {
               <div>
                 <h3>This knife is pending approval</h3>
                 <div class="controls">
-                  <Button text="Approve" onClick={approve} />
-                  <Button text="Reject" onClick={reject} danger />
+                  <Button variant="contained" color="success" size="large" onClick={approve}>Approve</Button>
+                  <Button variant="contained" color="error" size="large" onClick={reject}>Reject</Button>
                 </div>
               </div>
             </Show>
