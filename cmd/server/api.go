@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/cconger/shindaggers/pkg/db"
-	"github.com/cconger/shindaggers/pkg/twitch"
+	model "github.com/cconger/shindaggers/pkg/db/.gen/postgres/public/model"
 
 	"github.com/gorilla/mux"
 )
@@ -193,7 +193,9 @@ func (s *Server) getIssuedCollectable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	knife, err := s.db.GetKnife(ctx, id)
+	c, err := s.newDB.GetCollectableInstances(ctx, db.GetCollectableInstancesOptions{
+		ByID: id,
+	})
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			serveAPIErr(w, err, http.StatusNotFound, "Unknown collectable")
@@ -203,38 +205,31 @@ func (s *Server) getIssuedCollectable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(c) == 0 {
+		serveAPIErr(w, err, http.StatusNotFound, "Unknown collectable")
+		return
+	}
+
 	serveAPIPayload(
 		w,
-		&struct {
-			Collectable IssuedCollectable
-		}{
-			Collectable: IssuedCollectableFromDBKnife(knife),
-		},
+		c[0],
 	)
 }
 
 func (s *Server) getCollection(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	dbknives, err := s.db.GetCollection(ctx, false)
+	c, err := s.newDB.GetCollectables(ctx, db.GetCollectablesOptions{
+		Collection: 1,
+	})
 	if err != nil {
 		serveAPIErr(w, err, http.StatusInternalServerError, "")
 		return
 	}
 
-	collectables := make([]Collectable, len(dbknives))
-
-	for i, k := range dbknives {
-		collectables[i] = CollectableFromDBKnifeType(k)
-	}
-
 	serveAPIPayload(
 		w,
-		&struct {
-			Collectables []Collectable
-		}{
-			Collectables: collectables,
-		},
+		c,
 	)
 }
 
@@ -249,29 +244,36 @@ func (s *Server) getCollectable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dbknife, err := s.db.GetKnifeType(ctx, id, false, false)
+	c, err := s.newDB.GetCollectable(ctx, id, db.GetCollectableOptions{})
 	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			serveAPIErr(w, err, http.StatusNotFound, "Unknown collectable")
-			return
-		}
 		serveAPIErr(w, err, http.StatusInternalServerError, "")
 		return
 	}
 
 	serveAPIPayload(
 		w,
-		&struct {
-			Collectable Collectable
-		}{
-			Collectable: CollectableFromDBKnifeType(dbknife),
-		},
+		c,
 	)
 }
 
-func (s *Server) getLatestv2(w http.ResponseWriter, r *http.Request) {
+func (s *Server) getLatest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	lp, err := s.db.GetLP(ctx)
+
+	options := db.GetLatestIssuesOptions{
+		ByCollection: 1,
+	}
+
+	since := r.URL.Query().Get("since")
+	if since != "" {
+		ms, err := strconv.ParseInt(since, 10, 64)
+		if err != nil {
+			serveAPIErr(w, err, http.StatusBadRequest, "since not encoded properly")
+			return
+		}
+		options.After = time.UnixMilli(ms)
+	}
+
+	lp, err := s.newDB.GetLatestIssues(ctx, options)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusInternalServerError, "Internal Error")
 		return
@@ -283,73 +285,16 @@ func (s *Server) getLatestv2(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
-func (s *Server) getLatest(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	// TODO: Query Param `since` for limiting time
-	var sinceT *time.Time
-	since := r.URL.Query().Get("since")
-	if since != "" {
-		ms, err := strconv.ParseInt(since, 10, 64)
-		if err != nil {
-			serveAPIErr(w, err, http.StatusBadRequest, "since not encoded properly")
-			return
-		}
-		t := time.UnixMilli(ms)
-		sinceT = &t
-	}
-
-	var dbk []*db.Knife
-	var err error
-
-	if sinceT == nil {
-		dbk, err = s.db.GetLatestPulls(ctx)
-	} else {
-		dbk, err = s.db.GetLatestPullsSince(ctx, *sinceT)
-	}
-	if err != nil {
-		serveAPIErr(w, err, http.StatusInternalServerError, "Internal Error")
-		return
-	}
-
-	ic := make([]IssuedCollectable, len(dbk))
-
-	for i, k := range dbk {
-		ic[i] = IssuedCollectableFromDBKnife(k)
-	}
-
-	serveAPIPayload(
-		w,
-		&struct {
-			Collectables []IssuedCollectable
-		}{
-			Collectables: ic,
-		},
-	)
-}
-
-func (s *Server) getAuth(ctx context.Context, r *http.Request) (*db.UserAuth, error) {
+func (s *Server) getAuthUser(ctx context.Context, r *http.Request) (*db.User, error) {
 	rawToken := r.Header.Get("Authorization")
 	t, err := base64.URLEncoding.DecodeString(rawToken)
 	if err != nil {
 		return nil, fmt.Errorf("authorization token unreadable")
 	}
 
-	auth, err := s.db.GetAuth(ctx, t)
-	if err != nil {
-		return nil, fmt.Errorf("invalid token")
-	}
-
-	return auth, nil
-}
-
-func (s *Server) getAuthUser(ctx context.Context, r *http.Request) (*db.User, error) {
-	a, err := s.getAuth(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	u, err := s.db.GetUserByID(ctx, a.UserID)
+	u, err := s.newDB.GetUser(ctx, db.GetUserOptions{
+		AuthToken: t,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -377,9 +322,7 @@ func (s *Server) getLoggedInUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getUsers(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	// Get Query Param and do *LIKE* search
+	// TODO: Get Query Param and do *LIKE* search
 
 	search := r.URL.Query().Get("search")
 	if search == "" {
@@ -392,28 +335,12 @@ func (s *Server) getUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	udbs, err := s.db.GetUsers(ctx, search)
-	if err != nil {
-		serveAPIErr(
-			w,
-			err,
-			http.StatusInternalServerError,
-			"error loading users",
-		)
-		return
-	}
-
-	users := make([]User, len(udbs))
-	for i, u := range udbs {
-		users[i] = UserFromDBUser(u)
-	}
-
 	serveAPIPayload(
 		w,
 		&struct {
 			Users []User
 		}{
-			Users: users,
+			Users: nil,
 		},
 	)
 }
@@ -466,7 +393,35 @@ func (s *Server) getEquippedForUser(w http.ResponseWriter, r *http.Request) {
 	user, err := s.getUserByUserID(ctx, ParseUserID(useridstr))
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
-			serveAPIErr(w, err, http.StatusNotFound, "Unknown user")
+
+			collection, err := s.db.GetCollection(ctx, false)
+			if err != nil {
+				serveAPIErr(w, err, http.StatusInternalServerError, "Could not fetch collection for loaner")
+				return
+			}
+			slog.Warn("Creating a fake user response for a name that shindigs prolly made up")
+
+			serveAPIPayload(
+				w,
+				&struct {
+					User           User
+					Equipped       *IssuedCollectable
+					RandomlyPicked bool
+					LoanerKnife    bool
+					FakeUser       bool
+				}{
+					User: User{
+						ID:   useridstr,
+						Name: useridstr,
+					},
+					Equipped: &IssuedCollectable{
+						Collectable: CollectableFromDBKnifeType(collection[rand.Intn(len(collection))]),
+					},
+					RandomlyPicked: true,
+					LoanerKnife:    true,
+					FakeUser:       true,
+				},
+			)
 			return
 		}
 		serveAPIErr(w, err, http.StatusInternalServerError, "")
@@ -481,6 +436,7 @@ func (s *Server) getEquippedForUser(w http.ResponseWriter, r *http.Request) {
 
 	var equipped *IssuedCollectable
 	var randomlypicked bool
+	var loanerKnife bool
 	if eqRaw == nil {
 		raw, err := s.db.GetKnivesForUser(ctx, user.ID)
 		if err != nil {
@@ -490,6 +446,18 @@ func (s *Server) getEquippedForUser(w http.ResponseWriter, r *http.Request) {
 				eq := IssuedCollectableFromDBKnife(raw[rand.Intn(len(raw))])
 				equipped = &eq
 				randomlypicked = true
+			} else {
+				collection, err := s.db.GetCollection(ctx, false)
+				if err != nil {
+					serveAPIErr(w, err, http.StatusInternalServerError, "Could not fetch collection for loaner")
+					return
+				}
+
+				equipped = &IssuedCollectable{
+					Collectable: CollectableFromDBKnifeType(collection[rand.Intn(len(collection))]),
+				}
+				randomlypicked = true
+				loanerKnife = true
 			}
 		}
 	} else {
@@ -503,6 +471,7 @@ func (s *Server) getEquippedForUser(w http.ResponseWriter, r *http.Request) {
 			User           User
 			Equipped       *IssuedCollectable
 			RandomlyPicked bool
+			LoanerKnife    bool
 		}{
 			User: User{
 				ID:   strconv.FormatInt(user.ID, 10),
@@ -510,17 +479,21 @@ func (s *Server) getEquippedForUser(w http.ResponseWriter, r *http.Request) {
 			},
 			Equipped:       equipped,
 			RandomlyPicked: randomlypicked,
+			LoanerKnife:    loanerKnife,
 		},
 	)
 }
 
 func (s *Server) getUserByUserID(ctx context.Context, userID UserID) (*db.User, error) {
+	options := db.GetUserOptions{}
 	if userID.IsTwitch() {
-		return s.db.GetUserByTwitchID(ctx, userID.TwitchID)
+		options.TwitchID = userID.TwitchID
 	} else if userID.IsInternal() {
-		return s.db.GetUserByID(ctx, userID.InternalID)
+		options.ID = userID.InternalID
+	} else {
+		options.Username = userID.Name
 	}
-	return s.db.GetUserByUsername(ctx, userID.Name)
+	return s.newDB.GetUser(ctx, options)
 }
 
 func (s *Server) getUserCollection(w http.ResponseWriter, r *http.Request) {
@@ -595,7 +568,7 @@ type EquipPayload struct {
 func (s *Server) EquipHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	a, err := s.getAuth(ctx, r)
+	user, err := s.getAuthUser(ctx, r)
 	if err != nil {
 		serveAPIErr(w, err, http.StatusForbidden, "Unable to identify authenticated user")
 		return
@@ -630,18 +603,7 @@ func (s *Server) EquipHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Lookup user
-	user, err := s.db.GetUserByID(ctx, a.UserID)
-	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			serveAPIErr(w, err, http.StatusNotFound, "Unknown user")
-			return
-		}
-		serveAPIErr(w, err, http.StatusInternalServerError, "")
-		return
-	}
-
-	if !user.Admin && (user.ID != parseduid) {
+	if (user.Admin == nil || !*user.Admin) && (user.ID != parseduid) {
 		serveAPIErr(
 			w,
 			fmt.Errorf("non admin user (%d) tried to equip knife for someone else", user.ID),
@@ -688,7 +650,7 @@ func (s *Server) adminListCollectables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !u.Admin {
+	if u.Admin == nil || !*u.Admin {
 		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
 		return
 	}
@@ -792,7 +754,7 @@ func (s *Server) adminCreateCollectable(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if !u.Admin {
+	if u.Admin == nil || !*u.Admin {
 		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
 		return
 	}
@@ -865,7 +827,7 @@ func (s *Server) adminDeleteCollectable(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if !u.Admin {
+	if u.Admin == nil || !*u.Admin {
 		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
 		return
 	}
@@ -898,7 +860,7 @@ func (s *Server) adminUpdateCollectable(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if !u.Admin {
+	if u.Admin == nil || !*u.Admin {
 		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
 		return
 	}
@@ -973,7 +935,7 @@ func (s *Server) adminIssueCollectable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !u.Admin {
+	if u.Admin == nil || !*u.Admin {
 		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
 		return
 	}
@@ -990,7 +952,7 @@ func (s *Server) adminRevokeIssuedCollectable(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if !u.Admin {
+	if u.Admin == nil || !*u.Admin {
 		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
 		return
 	}
@@ -1011,7 +973,7 @@ func (s *Server) adminGetIssueConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !u.Admin {
+	if u.Admin == nil || !*u.Admin {
 		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
 		return
 	}
@@ -1038,35 +1000,12 @@ func (s *Server) adminUpdateIssueConfig(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if !u.Admin {
+	if u.Admin == nil || !*u.Admin {
 		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
 		return
 	}
 
 	serveAPIErr(w, fmt.Errorf("not implemented"), http.StatusNotImplemented, "Not Implemented")
-}
-
-// Test is a test endpoint to test authentication
-func (s *Server) Test(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	u, err := s.getAuth(ctx, r)
-	if err != nil {
-		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
-		return
-	}
-
-	uc := s.twitchClient.UserClient(&twitch.UserAuth{
-		AccessToken:  u.AccessToken,
-		RefreshToken: u.RefreshToken,
-	})
-
-	user, err := uc.GetUser(ctx)
-	if err != nil {
-		serveAPIErr(w, err, http.StatusInternalServerError, "couldn't get twitch user")
-		return
-	}
-	serveAPIPayload(w, user)
 }
 
 type RandomPullRequest struct {
@@ -1103,7 +1042,9 @@ func (s *Server) RandomPullHandler(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("RandomPull", "payload", reqBody)
 
-	user, err := s.db.GetUserByTwitchID(ctx, reqBody.TwitchID)
+	user, err := s.newDB.GetUser(ctx, db.GetUserOptions{
+		TwitchID: reqBody.TwitchID,
+	})
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 
@@ -1119,10 +1060,12 @@ func (s *Server) RandomPullHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			twuser := twusers[0]
 
-			user, nerr = s.db.CreateUser(ctx, &db.User{
-				ID:       s.idGenerator.Generate().Int64(),
-				TwitchID: twuser.ID,
-				Name:     twuser.DisplayName,
+			user, nerr = s.newDB.CreateUser(ctx, db.User{
+				Users: model.Users{
+					ID:       s.idGenerator.Generate().Int64(),
+					TwitchID: &twuser.ID,
+					Name:     twuser.DisplayName,
+				},
 			})
 			err = nerr
 		}
@@ -1139,51 +1082,54 @@ func (s *Server) RandomPullHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	verified := (rand.Intn(100) == 0)
-	collectableID, err := strconv.ParseInt(collectable.ID, 10, 64)
+
+	tags, err := json.Marshal(map[string]bool{
+		"subscriber": reqBody.Subscriber,
+		"verified":   verified,
+	})
 	if err != nil {
 		serveAPIErr(w, err, http.StatusInternalServerError, "unexpected error")
 		return
 	}
+	tagString := string(tags)
 
-	var issued IssuedCollectable
+	var issued *db.CollectableInstance
 	if !reqBody.DryRun {
-		knifeRaw, err := s.db.IssueCollectable(ctx, &db.Knife{
-			InstanceID: s.idGenerator.Generate().Int64(),
-			ID:         collectableID,
-			OwnerID:    user.ID,
-			Subscriber: reqBody.Subscriber,
-			Verified:   verified,
-		}, "pull")
+		issued, err = s.newDB.CreateCollectableInstance(ctx, model.CollectableInstances{
+			ID:            s.idGenerator.Generate().Int64(),
+			CollectableID: collectable.ID,
+			OwnerID:       user.ID,
+			EditionID:     1,
+			CreatedAt:     time.Now().UTC(),
+			Tags:          &tagString,
+		})
 		if err != nil {
 			serveAPIErr(w, err, http.StatusInternalServerError, "unexpected error")
 			return
 		}
-
-		issued = IssuedCollectableFromDBKnife(knifeRaw)
 	} else {
-		issued = IssuedCollectable{
-			Collectable: *collectable,
-			InstanceID:  strconv.FormatInt(s.idGenerator.Generate().Int64(), 10),
-			Owner:       UserFromDBUser(user),
-			Verified:    verified,
-			Subscriber:  reqBody.Subscriber,
-			Edition:     "First Edition",
-			IssuedAt:    time.Now(),
+		issued = &db.CollectableInstance{
+			CollectableInstances: model.CollectableInstances{
+				ID:            s.idGenerator.Generate().Int64(),
+				CollectableID: collectable.ID,
+				OwnerID:       user.ID,
+				EditionID:     1,
+				CreatedAt:     time.Now().UTC(),
+				Tags:          &tagString,
+			},
+			Collectable: collectable,
+			Owner:       &user.Users,
 		}
 	}
 
 	serveAPIPayload(
 		w,
-		&struct {
-			IssuedCollectable IssuedCollectable
-		}{
-			IssuedCollectable: issued,
-		},
+		issued,
 	)
 }
 
-func (s *Server) getRandomCollectable(ctx context.Context) (*Collectable, error) {
-	weights, err := s.db.GetWeights(ctx)
+func (s *Server) getRandomCollectable(ctx context.Context) (*db.Collectable, error) {
+	weights, err := s.newDB.GetWeights(ctx, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -1210,15 +1156,18 @@ func (s *Server) getRandomCollectable(ctx context.Context) (*Collectable, error)
 		return nil, fmt.Errorf("unable to pick a rarity: %d %+v", rarityRoll, weights)
 	}
 
-	c, err := s.db.GetKnifeTypesByRarity(ctx, rarity)
+	c, err := s.newDB.GetCollectables(ctx, db.GetCollectablesOptions{
+		Collection: 1,
+		Rarity:     rarity,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	// Give me a random knifetype
-	hit := CollectableFromDBKnifeType(c[rand.Intn(len(c))])
+	hit := c[rand.Intn(len(c))]
 
-	return &hit, nil
+	return hit, nil
 }
 
 func (s *Server) adminGetCollectable(w http.ResponseWriter, r *http.Request) {
@@ -1230,7 +1179,7 @@ func (s *Server) adminGetCollectable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !u.Admin {
+	if u.Admin == nil || !*u.Admin {
 		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
 		return
 	}
@@ -1267,7 +1216,7 @@ func (s *Server) adminApproveCollectable(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if !u.Admin {
+	if u.Admin == nil || !*u.Admin {
 		serveAPIErr(w, errAdminOnly, http.StatusForbidden, "")
 		return
 	}
@@ -1312,7 +1261,7 @@ func (s *Server) CombatReportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !u.Admin {
+	if u.Admin == nil || !*u.Admin {
 		serveAPIErr(w, err, http.StatusForbidden, "could not identify user")
 		return
 	}

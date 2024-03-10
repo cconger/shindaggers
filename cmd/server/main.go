@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"database/sql"
 	"flag"
 	"fmt"
 	"io"
@@ -24,6 +25,7 @@ import (
 	"github.com/gorilla/mux"
 	honeycomb "github.com/honeycombio/honeycomb-opentelemetry-go"
 	"github.com/honeycombio/otel-config-go/otelconfig"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
@@ -138,6 +140,7 @@ func main() {
 	var blobClient blobClient
 	var twitchClient twitch.TwitchClient
 	var dbClient db.KnifeDB
+	var newDBClient db.PostgresDB
 
 	if *isolated {
 		blobClient = &mockBlobClient{}
@@ -169,6 +172,15 @@ func main() {
 			log.Fatalf("failed to create twitchclient: %s", err)
 		}
 
+		pdb, err := sql.Open("pgx", os.Getenv("SUPABASE_DSN"))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		newDBClient = db.PostgresDB{
+			DB: pdb,
+		}
+
 		dbClient, err = db.NewSDDB(os.Getenv("DSN"))
 		if err != nil {
 			log.Fatal(err)
@@ -193,6 +205,7 @@ func main() {
 	s := Server{
 		devMode:        *devMode,
 		db:             dbClient,
+		newDB:          newDBClient,
 		webhookSecret:  webhookSecret,
 		twitchClientID: clientID,
 		twitchClient:   twitchClient,
@@ -215,7 +228,6 @@ func main() {
 	r.HandleFunc("/api/collectable", s.createCollectable).Methods(http.MethodPost)
 	r.HandleFunc("/api/issued/{id:[0-9]+}", s.getIssuedCollectable).Methods(http.MethodGet)
 
-	r.HandleFunc("/api/latest/v2", s.getLatestv2).Methods(http.MethodGet)
 	r.HandleFunc("/api/latest", s.getLatest).Methods(http.MethodGet)
 	r.HandleFunc("/api/user/me", s.getLoggedInUser).Methods(http.MethodGet)
 
@@ -227,10 +239,6 @@ func main() {
 	// Search Users
 	r.HandleFunc("/api/users", s.getUsers).Methods(http.MethodGet)
 
-	// Legacy URL to be deleted
-	r.HandleFunc("/pull/{token}", s.PullHandler).Methods(http.MethodPost)
-
-	r.HandleFunc("/api/pull/{token}", s.PullHandler).Methods(http.MethodPost)
 	r.HandleFunc("/api/randompull/{token}", s.RandomPullHandler).Methods(http.MethodPost)
 	r.HandleFunc("/api/user/equip", s.EquipHandler).Methods(http.MethodPost)
 

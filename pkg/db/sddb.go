@@ -411,7 +411,6 @@ var getMultipleUserIDQuery = `
 SELECT
   id,
   twitch_name,
-  lookup_name,
   admin,
   IFNULL(twitch_id, '') as twitch_id,
   created_at
@@ -448,7 +447,6 @@ func (sd *SDDB) GetUsersByID(ctx context.Context, ids ...int64) ([]*User, error)
 		err = rows.Scan(
 			&user.ID,
 			&user.Name,
-			&user.LookupName,
 			&user.Admin,
 			&user.TwitchID,
 			&createdAt,
@@ -472,7 +470,6 @@ var getUserTwitchIDQuery = `
 SELECT
   id,
   twitch_name,
-  lookup_name,
   IFNULL(twitch_id, '') as twitch_id,
   created_at
 FROM users
@@ -501,7 +498,6 @@ func (sd *SDDB) GetUserByTwitchID(ctx context.Context, id string) (*User, error)
 	err = rows.Scan(
 		&user.ID,
 		&user.Name,
-		&user.LookupName,
 		&user.TwitchID,
 		&createdAt,
 	)
@@ -521,7 +517,6 @@ var getUserUsernameQuery = `
 SELECT
   id,
   twitch_name,
-  lookup_name,
   IFNULL(twitch_id, '') as twitch_id,
   created_at
 FROM users
@@ -550,7 +545,6 @@ func (sd *SDDB) GetUserByUsername(ctx context.Context, username string) (*User, 
 	err = rows.Scan(
 		&user.ID,
 		&user.Name,
-		&user.LookupName,
 		&user.TwitchID,
 		&createdAt,
 	)
@@ -570,7 +564,6 @@ var getUsersSearchQuery = `
 SELECT
   id,
   twitch_name,
-  lookup_name,
   IFNULL(twitch_id, '') as twitch_id,
   created_at
 FROM users
@@ -602,7 +595,6 @@ func (sd *SDDB) GetUsers(ctx context.Context, substr string) ([]*User, error) {
 		err = rows.Scan(
 			&user.ID,
 			&user.Name,
-			&user.LookupName,
 			&user.TwitchID,
 			&createdAt,
 		)
@@ -624,85 +616,13 @@ func (sd *SDDB) GetUsers(ctx context.Context, substr string) ([]*User, error) {
 var createUserQuery = `INSERT INTO users (id, twitch_name, lookup_name, twitch_id) VALUES (?, ?, ?, ?);`
 
 func (sd *SDDB) CreateUser(ctx context.Context, user *User) (*User, error) {
-	if user == nil {
-		return nil, fmt.Errorf("user cannot be nil")
-	}
-
-	if user.ID == 0 {
-		return nil, fmt.Errorf("user ID must be specified")
-	}
-
-	if user.Name == "" {
-		return nil, fmt.Errorf("username must be specified")
-	}
-
-	lookupName := user.LookupName
-	if lookupName == "" {
-		lookupName = strings.ToLower(user.Name)
-	}
-
-	var query *sql.Stmt
-	var err error
-	query, err = sd.db.Prepare(createUserQuery)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = query.ExecContext(ctx, user.ID, user.Name, lookupName, user.TwitchID)
-	if err != nil {
-		return nil, err
-	}
-
-	return &User{
-		ID:         user.ID,
-		Name:       user.Name,
-		LookupName: lookupName,
-		TwitchID:   user.TwitchID,
-		Admin:      false,
-		CreatedAt:  time.Now(),
-	}, nil
+	return nil, fmt.Errorf("not implemented")
 }
 
 var updateUserQuery = `UPDATE users SET twitch_name = ?, lookup_name = ?, twitch_id = ? WHERE id = ?;`
 
 func (sd *SDDB) UpdateUser(ctx context.Context, user *User) (*User, error) {
-	if user == nil {
-		return nil, fmt.Errorf("user cannot be nil")
-	}
-
-	if user.ID == 0 {
-		return nil, fmt.Errorf("user ID must be specified")
-	}
-
-	if user.Name == "" {
-		return nil, fmt.Errorf("username must be specified")
-	}
-
-	lookupName := user.LookupName
-	if lookupName == "" {
-		lookupName = strings.ToLower(user.Name)
-	}
-
-	var query *sql.Stmt
-	var err error
-	query, err = sd.db.Prepare(updateUserQuery)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = query.ExecContext(ctx, user.Name, lookupName, user.TwitchID, user.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	return &User{
-		ID:         user.ID,
-		Name:       user.Name,
-		LookupName: lookupName,
-		TwitchID:   user.TwitchID,
-		Admin:      false,
-		CreatedAt:  time.Now(),
-	}, nil
+	return nil, fmt.Errorf("not implemented")
 }
 
 var queryUserAuthByToken = `

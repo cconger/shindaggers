@@ -1,0 +1,2 @@
+ALTER TABLE user_tokens
+  ADD COLUMN admin BOOLEAN DEFAULT FALSE;

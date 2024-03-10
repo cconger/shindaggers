@@ -34,15 +34,6 @@ type KnifeType struct {
 	ApprovedAt time.Time
 }
 
-type User struct {
-	ID         int64
-	Name       string
-	LookupName string
-	TwitchID   string
-	Admin      bool
-	CreatedAt  time.Time
-}
-
 type UserAuth struct {
 	UserID       int64
 	Token        []byte
