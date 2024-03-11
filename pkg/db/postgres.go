@@ -13,6 +13,29 @@ import (
 	"github.com/go-jet/jet/v2/qrm"
 )
 
+var ErrNotFound = errors.New("not found")
+
+type UserAuth struct {
+	UserID       int64
+	Token        []byte
+	AccessToken  string
+	RefreshToken string
+	ExpiresAt    time.Time
+	UpdatedAt    time.Time
+}
+
+type Edition struct {
+	ID        int
+	Name      string
+	UpdatedAt time.Time
+}
+
+type PullWeight struct {
+	CommunityID int64
+	Rarity      string
+	Weight      int
+	UpdatedAt   time.Time
+}
 type Collection struct {
 	ID      int64
 	Creator *User

@@ -92,24 +92,6 @@ type IssuedCollectable struct {
 	Deleted    bool      `json:"deleted"`
 }
 
-func IssuedCollectableFromDBKnife(k *db.Knife) IssuedCollectable {
-	res := IssuedCollectable{
-		Collectable: CollectableFromDBKnife(k),
-		InstanceID:  strconv.FormatInt(k.InstanceID, 10),
-		Owner: User{
-			ID:   strconv.FormatInt(k.OwnerID, 10),
-			Name: k.Owner,
-		},
-		Verified:   k.Verified,
-		Subscriber: k.Subscriber,
-		Edition:    k.Edition,
-		IssuedAt:   k.ObtainedAt,
-		Deleted:    k.Deleted,
-	}
-
-	return res
-}
-
 type Tags struct {
 	Verified   bool `json:"verified"`
 	Subscriber bool `json:"subscriber"`
@@ -179,34 +161,6 @@ type Collectable struct {
 	Rarity    string `json:"rarity"`
 	ImagePath string `json:"image_path"`
 	ImageURL  string `json:"image_url"`
-}
-
-func CollectableFromDBKnife(k *db.Knife) Collectable {
-	return Collectable{
-		ID:   strconv.FormatInt(k.ID, 10),
-		Name: k.Name,
-		Author: User{
-			ID:   strconv.FormatInt(k.AuthorID, 10),
-			Name: k.Author,
-		},
-		Rarity:    k.Rarity,
-		ImagePath: k.ImageName,
-		ImageURL:  "https://images.shindaggers.io/images/" + k.ImageName,
-	}
-}
-
-func CollectableFromDBKnifeType(k *db.KnifeType) Collectable {
-	return Collectable{
-		ID:   strconv.FormatInt(k.ID, 10),
-		Name: k.Name,
-		Author: User{
-			ID:   strconv.FormatInt(k.AuthorID, 10),
-			Name: k.Author,
-		},
-		Rarity:    k.Rarity,
-		ImagePath: k.ImageName,
-		ImageURL:  "https://images.shindaggers.io/images/" + k.ImageName,
-	}
 }
 
 type AdminCollectable struct {
