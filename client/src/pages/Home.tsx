@@ -27,8 +27,7 @@ const fetchLatest: ResourceFetcher<true, IssuedCollectable[], unknown> = async (
   }
 
   let collectables = await response.json().then((resp) => {
-    if (resp.Collectables === undefined) { throw new Error("unexpected data format"); }
-    return resp.Collectables;
+    return resp;
   });
 
   if (value !== undefined) {

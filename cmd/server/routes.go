@@ -22,8 +22,7 @@ import (
 
 type Server struct {
 	devMode        bool
-	db             db.KnifeDB
-	newDB          db.PostgresDB
+	db             db.PostgresDB
 	webhookSecret  string
 	twitchClientID string
 	twitchClient   twitch.TwitchClient
@@ -100,12 +99,12 @@ func (s *Server) LoginResponseHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get or create user in our db
-	user, err := s.newDB.GetUser(ctx, db.GetUserOptions{
+	user, err := s.db.GetUser(ctx, db.GetUserOptions{
 		TwitchID: twitchUser.ID,
 	})
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
-			user, err = s.newDB.CreateUser(ctx, db.User{
+			user, err = s.db.CreateUser(ctx, db.User{
 				Users: model.Users{
 					ID:       s.idGenerator.Generate().Int64(),
 					Name:     twitchUser.DisplayName,
@@ -128,7 +127,7 @@ func (s *Server) LoginResponseHandler(w http.ResponseWriter, r *http.Request) {
 		// We need to update this user
 		user.Name = twitchUser.DisplayName
 
-		user, err = s.newDB.UpdateUser(ctx, *user)
+		user, err = s.db.UpdateUser(ctx, *user)
 		if err != nil {
 			slog.Error("failed updating usernames for user", "id", user.ID, "err", err)
 		}
@@ -142,7 +141,7 @@ func (s *Server) LoginResponseHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Store access token and refresh token
-	err = s.newDB.SaveAuth(
+	err = s.db.SaveAuth(
 		ctx,
 		db.UserAuth{
 			UserID:       user.ID,

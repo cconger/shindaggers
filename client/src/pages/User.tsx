@@ -39,7 +39,6 @@ export const UserCollection: Component = (props) => {
         <div class="catalog-header">
           <div class="catalog-title">
             <h1>{usercollection()!.User.name}</h1>
-            <DuelStats user={usercollection()!.User} />
           </div>
           <Show when={usercollection()!.Equipped}>
             <div class="catalog-equipped">
@@ -58,67 +57,6 @@ export const UserCollection: Component = (props) => {
   );
 };
 
-
-const fetchDuelStats = async (id: string): Promise<UserDuelStats> => {
-  let response = await fetch(`/api/user/${id}/stats`)
-  if (response.status !== 200) {
-    throw new Error("unexpected status code " + response.statusText);
-  }
-  let payload = await response.json();
-  return payload.Stats;
-}
-
-type DuelStatsProps = {
-  user: User;
-}
-
-export const DuelStats: Component<DuelStatsProps> = (props) => {
-
-  const [userstats] = createResource(() => props.user.id, fetchDuelStats)
-
-  let total = () => {
-    let s = userstats()
-    if (s === undefined) {
-      return 0
-    }
-    return s.wins + s.losses + s.ties;
-  }
-
-  return (
-    <Switch>
-      <Match when={userstats.loading}>
-        Loading Stats...
-      </Match>
-      <Match when={userstats.error}>
-        <></>
-      </Match>
-      <Match when={userstats()}>
-        <>
-          <h2>Duels </h2>
-          <div class="stat-block">
-            <div class="stat">
-              <div class="header" title="Wins">W</div>
-              <div class="count">{userstats()?.wins}</div>
-              <div class="percent"><Percentage numerator={userstats()?.wins || 0} denominator={total()} /></div>
-            </div>
-            <div>-</div>
-            <div class="stat">
-              <div class="header" title="Losses">L</div>
-              <div class="count">{userstats()?.losses}</div>
-              <div class="percent"><Percentage numerator={userstats()?.losses || 0} denominator={total()} /></div>
-            </div>
-            <div>-</div>
-            <div class="stat">
-              <div class="header" title="Ties">T</div>
-              <div class="count">{userstats()?.ties}</div>
-              <div class="percent"><Percentage numerator={userstats()?.ties || 0} denominator={total()} /></div>
-            </div>
-          </div>
-        </>
-      </Match>
-    </Switch>
-  )
-}
 
 type PercentageProps = {
   numerator: number;

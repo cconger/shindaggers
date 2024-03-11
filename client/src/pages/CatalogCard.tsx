@@ -10,8 +10,7 @@ const fetchCollectable = async (id: string): Promise<Collectable> => {
     throw new Error("Collectable does not exist")
   }
   return await response.json().then((resp) => {
-    if (resp.Collectable) return resp.Collectable;
-    throw new Error("Unexpected Datatype")
+    return resp
   })
 }
 

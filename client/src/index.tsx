@@ -14,7 +14,6 @@ import { UserCollection } from './pages/User';
 import { UITest } from './pages/UITest';
 import { FourOhFour } from './pages/FourOhFour';
 import { Creator } from './pages/Creator';
-import { Event } from './pages/Event';
 
 const AdminWrapper = lazy(async () => {
   let admin = await import('./pages/Admin')
@@ -69,7 +68,6 @@ render(() => (
         <Route path="/catalog" component={Catalog} />
         <Route path="/catalog/:id" component={CatalogCard} />
         <Route path="/creator" component={Creator} />
-        <Route path="/event/:slug" component={Event} />
         <Route path="/uitest" component={UITest} />
         <Route path="/admin" component={AdminWrapper}>
           <Route path="/" component={AdminPage} />

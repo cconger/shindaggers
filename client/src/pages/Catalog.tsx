@@ -16,8 +16,7 @@ const fetchCatalog = async (): Promise<Collectable[]> => {
     throw new Error("unexpected status code " + response.statusText);
   }
   return await response.json().then((resp) => {
-    if (resp.Collectables) return resp.Collectables;
-    return [];
+    return resp;
   });
 }
 

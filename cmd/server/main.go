@@ -139,7 +139,6 @@ func main() {
 
 	var blobClient blobClient
 	var twitchClient twitch.TwitchClient
-	var dbClient db.KnifeDB
 	var newDBClient db.PostgresDB
 
 	if *isolated {
@@ -180,11 +179,6 @@ func main() {
 		newDBClient = db.PostgresDB{
 			DB: pdb,
 		}
-
-		dbClient, err = db.NewSDDB(os.Getenv("DSN"))
-		if err != nil {
-			log.Fatal(err)
-		}
 	}
 
 	alloc_id := os.Getenv("FLY_ALLOC_ID")
@@ -204,8 +198,7 @@ func main() {
 
 	s := Server{
 		devMode:        *devMode,
-		db:             dbClient,
-		newDB:          newDBClient,
+		db:             newDBClient,
 		webhookSecret:  webhookSecret,
 		twitchClientID: clientID,
 		twitchClient:   twitchClient,
@@ -234,16 +227,12 @@ func main() {
 	r.HandleFunc("/api/user/{userid}", s.getUser).Methods(http.MethodGet)
 	r.HandleFunc("/api/user/{userid}/equipped", s.getEquippedForUser).Methods(http.MethodGet)
 	r.HandleFunc("/api/user/{userid}/collection", s.getUserCollection).Methods(http.MethodGet)
-	r.HandleFunc("/api/user/{userid}/stats", s.getUserStats).Methods(http.MethodGet)
 
 	// Search Users
 	r.HandleFunc("/api/users", s.getUsers).Methods(http.MethodGet)
 
 	r.HandleFunc("/api/randompull/{token}", s.RandomPullHandler).Methods(http.MethodPost)
 	r.HandleFunc("/api/user/equip", s.EquipHandler).Methods(http.MethodPost)
-
-	// GetEventStats
-	r.HandleFunc("/api/event/{event}/stats", s.getEventStats).Methods(http.MethodGet)
 
 	// ADMIN APIs
 	r.HandleFunc("/api/admin/collectables", s.adminListCollectables).Methods(http.MethodGet)
@@ -271,7 +260,6 @@ func main() {
 
 	// Image Upload
 	r.HandleFunc("/api/image", s.ImageUpload).Methods(http.MethodPost)
-	r.HandleFunc("/api/combat/report", s.CombatReportHandler).Methods(http.MethodPost)
 
 	// Overlay is a mini SPA for OBS
 	r.HandleFunc("/overlay/{id}", s.overlayHandler).Methods(http.MethodGet)
@@ -299,7 +287,6 @@ func main() {
 	log.Println("Interrupt signal recieved. Shutting down...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	dbClient.Close(ctx)
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Printf("Error stopping http server: %v", err)
 	}
